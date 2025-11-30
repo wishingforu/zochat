@@ -246,51 +246,67 @@ BANNER
                             -H "origin: https://$DOMAIN")
                         
                         if command -v jq > /dev/null 2>&1; then
-                            service_count=$(echo "$services" | jq '. | length' 2>/dev/null)
+                            # Check if response is an array
+                            is_array=$(echo "$services" | jq 'if type=="array" then "yes" else "no" end' -r 2>/dev/null)
                             
-                            if [ "$service_count" = "0" ] || [ -z "$service_count" ]; then
-                                echo -e "${DIM}No services found.${RESET}"
-                            else
-                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                                echo -e "  ${BOLD}Active Services ($service_count)${RESET}"
-                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            if [ "$is_array" = "yes" ]; then
+                                service_count=$(echo "$services" | jq '. | length' 2>/dev/null)
                                 
-                                for i in $(seq 0 $(($service_count - 1))); do
-                                    label=$(echo "$services" | jq -r ".[$i].label")
-                                    protocol=$(echo "$services" | jq -r ".[$i].protocol")
-                                    port=$(echo "$services" | jq -r ".[$i].local_port")
-                                    http_url=$(echo "$services" | jq -r ".[$i].http_url")
-                                    tcp_addr=$(echo "$services" | jq -r ".[$i].tcp_addr")
+                                if [ "$service_count" = "0" ] || [ -z "$service_count" ]; then
+                                    echo -e "${DIM}No services found.${RESET}"
+                                else
+                                    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                                    echo -e "  ${BOLD}Active Services ($service_count)${RESET}"
+                                    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
                                     
-                                    # Check service health
-                                    status="${YELLOW}●${RESET}" # Default checking
-                                    if [ "$http_url" != "null" ]; then
-                                        # Timeout 2s, check if 200-399
-                                        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "$http_url")
-                                        if [[ "$code" =~ ^[23] ]]; then
-                                            status="${GREEN}●${RESET}"
+                                    # Loop through services using base64 to handle special chars safely
+                                    for i in $(seq 0 $(($service_count - 1))); do
+                                        # Extract fields safely
+                                        label=$(echo "$services" | jq -r ".[$i].label // \"Unknown\"")
+                                        protocol=$(echo "$services" | jq -r ".[$i].protocol // \"tcp\"")
+                                        port=$(echo "$services" | jq -r ".[$i].local_port // \"N/A\"")
+                                        http_url=$(echo "$services" | jq -r ".[$i].http_url")
+                                        tcp_addr=$(echo "$services" | jq -r ".[$i].tcp_addr")
+                                        
+                                        # Determine status
+                                        if [ "$http_url" != "null" ] && [ -n "$http_url" ]; then
+                                            # Check HTTP health
+                                            # Use --max-time 2 to avoid hanging
+                                            http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "$http_url")
+                                            
+                                            if [[ "$http_code" =~ ^[23] ]]; then
+                                                status_icon="${GREEN}●${RESET}"
+                                                status_text="${GREEN}Online ($http_code)${RESET}"
+                                            else
+                                                status_icon="${RED}●${RESET}"
+                                                status_text="${RED}Offline ($http_code)${RESET}"
+                                            fi
                                         else
-                                            status="${RED}●${RESET}"
+                                            # TCP service - cannot easily check from here without nc/telnet
+                                            # Assume running if it exists in the list
+                                            status_icon="${BLUE}●${RESET}"
+                                            status_text="${BLUE}Running${RESET}"
                                         fi
-                                    else
-                                        # Assume TCP is up if it exists (hard to check without nc)
-                                        status="${GREEN}●${RESET}"
-                                    fi
+                                        
+                                        echo ""
+                                        echo -e "  $status_icon ${BOLD}$label${RESET} ${DIM}($protocol:$port)${RESET}"
+                                        echo -e "      Status: $status_text"
+                                        
+                                        if [ "$http_url" != "null" ] && [ -n "$http_url" ]; then
+                                            echo -e "      ${CYAN}URL:${RESET}    $http_url"
+                                        fi
+                                        
+                                        if [ "$tcp_addr" != "null" ] && [ -n "$tcp_addr" ]; then
+                                            echo -e "      ${CYAN}TCP:${RESET}    $tcp_addr"
+                                        fi
+                                    done
                                     
                                     echo ""
-                                    echo -e "  $status ${BOLD}$label${RESET} ${DIM}($protocol:$port)${RESET}"
-                                    
-                                    if [ "$http_url" != "null" ]; then
-                                        echo -e "      ${CYAN}HTTP:${RESET} $http_url"
-                                    fi
-                                    
-                                    if [ "$tcp_addr" != "null" ]; then
-                                        echo -e "      ${CYAN}TCP:${RESET}  $tcp_addr"
-                                    fi
-                                done
-                                
-                                echo ""
-                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                                    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                                fi
+                            else
+                                echo -e "${RED}Error: Invalid API response format.${RESET}"
+                                echo -e "${DIM}Response: $services${RESET}"
                             fi
                         else
                             echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
@@ -316,7 +332,19 @@ BANNER
                         echo -n "Working directory: "
                         read svc_workdir
                         
-                        service_json="{\"label\":\"$svc_label\",\"protocol\":\"$svc_protocol\",\"local_port\":$svc_port,\"entrypoint\":\"$svc_entrypoint\",\"workdir\":\"$svc_workdir\"}"
+                        # Construct JSON payload
+                        # Use jq to create safe JSON if available, otherwise manual string construction
+                        if command -v jq > /dev/null 2>&1; then
+                            service_json=$(jq -n \
+                                --arg label "$svc_label" \
+                                --arg protocol "$svc_protocol" \
+                                --argjson port "$svc_port" \
+                                --arg entrypoint "$svc_entrypoint" \
+                                --arg workdir "$svc_workdir" \
+                                '{label: $label, protocol: $protocol, local_port: $port, entrypoint: $entrypoint, workdir: $workdir}')
+                        else
+                            service_json="{\"label\":\"$svc_label\",\"protocol\":\"$svc_protocol\",\"local_port\":$svc_port,\"entrypoint\":\"$svc_entrypoint\",\"workdir\":\"$svc_workdir\"}"
+                        fi
                         
                         echo ""
                         echo -e "${YELLOW}Creating service...${RESET}"
@@ -327,8 +355,16 @@ BANNER
                             -H "origin: https://$DOMAIN" \
                             -d "$service_json")
                             
-                        echo ""
-                        echo -e "${GREEN}Service created!${RESET}"
+                        # Check if successful (simple check for service_id in response)
+                        if echo "$result" | grep -q "service_id"; then
+                            echo ""
+                            echo -e "${GREEN}✓ Service created successfully!${RESET}"
+                        else
+                            echo ""
+                            echo -e "${RED}✗ Failed to create service.${RESET}"
+                            echo -e "${DIM}Response: $result${RESET}"
+                        fi
+                        
                         echo ""
                         read -n 1 -s -r -p "Press any key to continue..."
                         ;;
