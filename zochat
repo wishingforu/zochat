@@ -198,6 +198,11 @@ BANNER
                     *) echo "Invalid choice"; sleep 1; continue ;;
                 esac
                 
+                # Fix for SMS type
+                if [ "$type_param" = "text" ]; then
+                    type_param="sms"
+                fi
+                
                 # Fetch conversations
                 echo ""
                 echo -e "${YELLOW}Fetching $type_label...${RESET}"
@@ -207,6 +212,16 @@ BANNER
                     -H "origin: https://$DOMAIN")
                 
                 if command -v jq > /dev/null 2>&1; then
+                    # Check if response is an array
+                    is_array=$(echo "$convs_resp" | jq 'if type=="array" then "yes" else "no" end' -r 2>/dev/null)
+                    
+                    if [ "$is_array" != "yes" ]; then
+                        echo -e "${RED}Error: Invalid API response format.${RESET}"
+                        echo -e "${DIM}Response: $convs_resp${RESET}"
+                        read -n 1 -s -r -p "Press any key to continue..."
+                        continue
+                    fi
+
                     conv_count=$(echo "$convs_resp" | jq '. | length' 2>/dev/null)
                     
                     if [ "$conv_count" = "0" ] || [ -z "$conv_count" ]; then
