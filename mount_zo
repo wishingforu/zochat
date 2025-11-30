@@ -58,24 +58,30 @@ check_zo_computer_environment() {
 start_server() {
     echo -e "${CYAN}Starting WebDAV server...${RESET}"
     
-    # Check if Python is available
-    if ! command -v python3 &> /dev/null; then
+    # Detect Python command (Windows uses 'py', Unix uses 'python3')
+    PYTHON_CMD=""
+    if command -v python3 &> /dev/null; then
+        PYTHON_CMD="python3"
+    elif command -v py &> /dev/null; then
+        PYTHON_CMD="py"
+    else
         echo -e "${RED}Error: Python 3 is not installed${RESET}"
+        echo "Install from: https://www.python.org/downloads/"
         exit 1
     fi
     
     # Check if dependencies are installed
-    if ! python3 -c "import wsgidav" 2>/dev/null; then
+    if ! $PYTHON_CMD -c "import wsgidav" 2>/dev/null; then
         echo -e "${YELLOW}Installing dependencies...${RESET}"
-        pip3 install -r "$(dirname "$0")/requirements.txt" || {
+        $PYTHON_CMD -m pip install -r "$(dirname "$0")/requirements.txt" || {
             echo -e "${RED}Failed to install dependencies${RESET}"
-            echo "Try manually: pip3 install wsgidav cheroot requests"
+            echo "Try manually: $PYTHON_CMD -m pip install wsgidav cheroot requests"
             exit 1
         }
     fi
     
     # Start server in background
-    nohup python3 "$SERVER_SCRIPT" > /tmp/zoMount.log 2>&1 &
+    nohup $PYTHON_CMD "$SERVER_SCRIPT" > /tmp/zoMount.log 2>&1 &
     SERVER_PID=$!
     echo $SERVER_PID > /tmp/zoMount.pid
     
