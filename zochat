@@ -617,6 +617,11 @@ BANNER
         echo -n "Reasoning Level: "
         read reasoning_choice
         
+        # Check for /exit
+        if [ "$reasoning_choice" = "/exit" ]; then
+            exec "$0"
+        fi
+        
         case $reasoning_choice in
             0) reasoning_level=0; reasoning_name="Quick" ;;
             1) reasoning_level=1; reasoning_name="Balanced" ;;
@@ -639,6 +644,11 @@ BANNER
         echo ""
         echo -n "Verbosity: "
         read verbosity_choice
+        
+        # Check for /exit
+        if [ "$verbosity_choice" = "/exit" ]; then
+            exec "$0"
+        fi
         
         case $verbosity_choice in
             1) verbosity_level="low" ;;
@@ -681,6 +691,11 @@ BANNER
         echo ""
         echo -n "Token Budget: "
         read budget_choice
+        
+        # Check for /exit
+        if [ "$budget_choice" = "/exit" ]; then
+            exec "$0"
+        fi
         
         case $budget_choice in
             1) token_budget=15000; budget_name="15k" ;;
@@ -744,6 +759,11 @@ BANNER
         echo -n "Token Budget: "
         read budget_choice
         
+        # Check for /exit
+        if [ "$budget_choice" = "/exit" ]; then
+            exec "$0"
+        fi
+        
         case $budget_choice in
             0) token_budget=0; budget_name="Standard" ;;
             1) token_budget=15000; budget_name="15k" ;;
@@ -782,6 +802,11 @@ BANNER
         echo ""
         echo -n "Token Budget: "
         read budget_choice
+        
+        # Check for /exit
+        if [ "$budget_choice" = "/exit" ]; then
+            exec "$0"
+        fi
         
         case $budget_choice in
             0) token_budget=0; budget_name="Standard" ;;
