@@ -784,7 +784,7 @@ BANNER
         name="Claude Sonnet 4 ($budget_name)"
         ;;
     12)
-        continue 2
+        exec "$0"
         ;;
     *) echo "Invalid choice"; exit 1 ;;
 esac
