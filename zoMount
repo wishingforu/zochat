@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""
+zoMount - WebDAV server for mounting Zo Computer workspace
+"""
+
+import os
+import sys
+import json
+import requests
+from datetime import datetime
+from wsgidav.wsgidav_app import WsgiDAVApp
+from wsgidav.dav_provider import DAVProvider, DAVCollection, DAVNonCollection
+from wsgidav.dav_error import DAVError, HTTP_NOT_FOUND, HTTP_FORBIDDEN
+
+class ZoFile(DAVNonCollection):
+    """Represents a file in the Zo Computer workspace"""
+    
+    def __init__(self, path, environ, file_info):
+        super().__init__(path, environ)
+        self.file_info = file_info
+        self.name = file_info.get("name", os.path.basename(path))
+        
+    def get_content_length(self):
+        return self.file_info.get("size", 0)
+    
+    def get_content_type(self):
+        # Simple MIME type detection based on extension
+        ext = os.path.splitext(self.name)[1].lower()
+        mime_types = {
+            '.txt': 'text/plain',
+            '.md': 'text/markdown',
+            '.py': 'text/x-python',
+            '.js': 'text/javascript',
+            '.json': 'application/json',
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.jpg': 'image/jpeg',
+            '.png': 'image/png',
+            '.pdf': 'application/pdf',
+        }
+        return mime_types.get(ext, 'application/octet-stream')
+    
+    def get_creation_date(self):
+        return None  # Could parse from API if available
+    
+    def get_last_modified(self):
+        return None  # Could parse from API if available
+    
+    def get_content(self):
+        """Download file content from Zo Computer"""
+        provider = self.provider
+        domain = provider.domain
+        access_token = provider.access_token
+        
+        # Try to download file content
+        # We'll try multiple possible endpoints
+        file_path = self.path.lstrip('/')
+        
+        endpoints = [
+            f"https://{domain}/api/workspace-file?path={file_path}",
+            f"https://{domain}/api/file?path={file_path}",
+            f"https://{domain}/files/download?path={file_path}",
+        ]
+        
+        for endpoint in endpoints:
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers={
+                        'Cookie': f'access_token={access_token}',
+                        'Origin': f'https://{domain}'
+                    },
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    return response.content
+                    
+            except Exception as e:
+                continue
+        
+        # If all endpoints fail, return empty content
+        return b""
+    
+    def support_ranges(self):
+        return False
+
+
+class ZoDirectory(DAVCollection):
+    """Represents a directory in the Zo Computer workspace"""
+    
+    def __init__(self, path, environ, dir_info):
+        super().__init__(path, environ)
+        self.dir_info = dir_info
+        self.name = dir_info.get("name", os.path.basename(path.rstrip('/')))
+    
+    def get_member_names(self):
+        """Return list of child names"""
+        children = self.dir_info.get("children", [])
+        return [child["name"] for child in children]
+    
+    def get_member(self, name):
+        """Return a child resource by name"""
+        children = self.dir_info.get("children", [])
+        
+        for child in children:
+            if child["name"] == name:
+                child_path = os.path.join(self.path, name).replace('\\', '/')
+                
+                if child["type"] == "directory":
+                    # Fetch subdirectory info
+                    sub_info = self.provider.get_directory_info(child_path)
+                    if sub_info:
+                        return ZoDirectory(child_path, self.environ, sub_info)
+                else:
+                    return ZoFile(child_path, self.environ, child)
+        
+        return None
+
+
+class ZoComputerProvider(DAVProvider):
+    """WebDAV provider that connects to Zo Computer API"""
+    
+    def __init__(self, domain, access_token):
+        super().__init__()
+        self.domain = domain
+        self.access_token = access_token
+        self.cache = {}  # Simple cache for directory listings
+    
+    def get_directory_info(self, path):
+        """Fetch directory information from Zo Computer API"""
+        
+        # Check cache first
+        if path in self.cache:
+            return self.cache[path]
+        
+        # Build API request
+        path_param = path.lstrip('/') if path != '/' else ''
+        
+        if path == '/' or path == '':
+            url = f"https://{self.domain}/api/workspace-tree?root=w&showHidden=false"
+        else:
+            url = f"https://{self.domain}/api/workspace-tree?root=w&path={path_param}&showHidden=false"
+        
+        try:
+            response = requests.get(
+                url,
+                headers={
+                    'Cookie': f'access_token={self.access_token}',
+                    'Origin': f'https://{self.domain}'
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.cache[path] = data
+                return data
+            else:
+                print(f"API error: {response.status_code} for {url}")
+                return None
+                
+        except Exception as e:
+            print(f"Error fetching directory info: {e}")
+            return None
+    
+    def get_resource_inst(self, path, environ):
+        """Return a DAVResource instance for the given path"""
+        
+        # Normalize path
+        path = path.rstrip('/')
+        if not path:
+            path = '/'
+        
+        # Handle root directory
+        if path == '/':
+            root_info = self.get_directory_info('/')
+            if root_info:
+                return ZoDirectory('/', environ, root_info)
+            return None
+        
+        # Get parent directory
+        parent_path = os.path.dirname(path)
+        if not parent_path:
+            parent_path = '/'
+        
+        parent_info = self.get_directory_info(parent_path)
+        if not parent_info:
+            return None
+        
+        # Find the resource in parent's children
+        name = os.path.basename(path)
+        children = parent_info.get("children", [])
+        
+        for child in children:
+            if child["name"] == name:
+                if child["type"] == "directory":
+                    dir_info = self.get_directory_info(path)
+                    if dir_info:
+                        return ZoDirectory(path, environ, dir_info)
+                else:
+                    return ZoFile(path, environ, child)
+        
+        return None
+
+
+def load_config():
+    """Load configuration from zo-chat config file"""
+    config_path = os.path.expanduser("~/.config/zo-chat/config")
+    
+    if not os.path.exists(config_path):
+        print(f"Error: Config file not found at {config_path}")
+        print("Please run 'zochat' first to set up your credentials")
+        sys.exit(1)
+    
+    try:
+        with open(config_path, 'r') as f:
+            lines = f.readlines()
+            
+        config = {}
+        for line in lines:
+            line = line.strip()
+            if '=' in line and not line.startswith('#'):
+                key, value = line.split('=', 1)
+                config[key] = value.strip('"').strip("'")
+        
+        return config
+    except Exception as e:
+        print(f"Error reading config: {e}")
+        sys.exit(1)
+
+
+def main():
+    """Start the WebDAV server"""
+    
+    # Load credentials
+    config = load_config()
+    domain = config.get('DOMAIN', 'zo.computer')
+    access_token = config.get('ACCESS_TOKEN')
+    
+    if not access_token:
+        print("Error: ACCESS_TOKEN not found in config")
+        sys.exit(1)
+    
+    print(f"Starting WebDAV server for {domain}...")
+    print(f"Server will run on http://localhost:9999")
+    print()
+    print("Mount instructions:")
+    print("  macOS:   mkdir ~/zoMount && mount_webdav http://localhost:9999 ~/zoMount")
+    print("  Linux:   mkdir ~/zoMount && mount -t davfs http://localhost:9999 ~/zoMount")
+    print("  Windows: net use Z: http://localhost:9999")
+    print()
+    print("Press Ctrl+C to stop the server")
+    print()
+    
+    # Create provider
+    provider = ZoComputerProvider(domain, access_token)
+    
+    # Configure WebDAV app
+    config = {
+        "provider_mapping": {
+            "/": provider
+        },
+        "host": "0.0.0.0",
+        "port": 9999,
+        "verbose": 1,
+    }
+    
+    # Start server
+    app = WsgiDAVApp(config)
+    
+    try:
+        from cheroot import wsgi
+        server = wsgi.Server(
+            bind_addr=("0.0.0.0", 9999),
+            wsgi_app=app
+        )
+        server.start()
+    except KeyboardInterrupt:
+        print("\nShutting down server...")
+    except Exception as e:
+        print(f"Error starting server: {e}")
+        print("\nTry installing dependencies:")
+        print("  pip install wsgidav cheroot requests")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

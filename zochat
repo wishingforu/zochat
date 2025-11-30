@@ -146,7 +146,8 @@ BANNER
     echo -e "  ${CYAN}[5]${RESET} ${BOLD}Services${RESET}          - Manage services"
     echo -e "  ${CYAN}[6]${RESET} ${BOLD}Billing${RESET}           - Credits and usage"
     echo -e "  ${CYAN}[7]${RESET} ${BOLD}System${RESET}            - View machine stats"
-    echo -e "  ${CYAN}[8]${RESET} ${BOLD}Exit${RESET}              - Close application"
+    echo -e "  ${CYAN}[8]${RESET} ${BOLD}Mount${RESET}             - Mount workspace as drive"
+    echo -e "  ${CYAN}[9]${RESET} ${BOLD}Exit${RESET}              - Close application"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
@@ -808,6 +809,61 @@ HORSE
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
         8)
+            # Mount Filesystem
+            clear
+            echo -e "${GREEN}"
+            cat << "BANNER"
+     ███╗   ███╗ ██████╗ ██╗   ██╗███╗   ██╗████████╗
+     ████╗ ████║██╔═══██╗██║   ██║████╗  ██║╚══██╔══╝
+     ██╔████╔██║██║   ██║██║   ██║██╔██╗ ██║   ██║   
+     ██║╚██╔╝██║██║   ██║██║   ██║██║╚██╗██║   ██║   
+     ██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██║ ╚████║   ██║   
+     ╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   
+BANNER
+            echo -e "${RESET}"
+            echo ""
+            echo -e "${BOLD}           Mount Workspace${RESET}"
+            echo ""
+            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo ""
+            echo -e "This will mount your Zo Computer workspace as a network drive."
+            echo ""
+            echo -e "${YELLOW}Requirements:${RESET}"
+            echo -e "  • Python 3.7+"
+            echo -e "  • pip (Python package manager)"
+            echo ""
+            echo -e "${YELLOW}Mount points:${RESET}"
+            echo -e "  • macOS/Linux: ~/zoMount"
+            echo -e "  • Windows:     Z:"
+            echo ""
+            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo ""
+            
+            # Check if mount helper exists
+            if [ ! -f "$(dirname "$0")/mount_zo" ]; then
+                echo -e "${RED}Error: mount_zo script not found${RESET}"
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                continue
+            fi
+            
+            echo -n "Start mounting? [y/N]: "
+            read -n 1 mount_confirm
+            echo ""
+            
+            if [[ "$mount_confirm" =~ ^[Yy]$ ]]; then
+                echo ""
+                echo -e "${CYAN}Starting mount process...${RESET}"
+                echo ""
+                
+                # Run mount script
+                bash "$(dirname "$0")/mount_zo" mount
+                
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+            fi
+            ;;
+        9)
             echo ""
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""

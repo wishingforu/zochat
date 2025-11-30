@@ -1,0 +1,232 @@
+#!/bin/bash
+# mount_zo - Helper script to mount Zo Computer workspace
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+# Configuration
+ZO_MOUNT_PORT=9999
+ZO_MOUNT_POINT="$HOME/zoMount"
+SERVER_SCRIPT="$(dirname "$0")/zoMount"
+
+# Detect OS
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "linux"
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+        echo "windows"
+    else
+        echo "unknown"
+    fi
+}
+
+# Check if server is running
+is_server_running() {
+    curl -s -o /dev/null -w "%{http_code}" http://localhost:$ZO_MOUNT_PORT/ 2>/dev/null | grep -q "200\|301\|302\|401"
+}
+
+# Start WebDAV server
+start_server() {
+    echo -e "${CYAN}Starting WebDAV server...${RESET}"
+    
+    # Check if Python is available
+    if ! command -v python3 &> /dev/null; then
+        echo -e "${RED}Error: Python 3 is not installed${RESET}"
+        exit 1
+    fi
+    
+    # Check if dependencies are installed
+    if ! python3 -c "import wsgidav" 2>/dev/null; then
+        echo -e "${YELLOW}Installing dependencies...${RESET}"
+        pip3 install -r "$(dirname "$0")/requirements.txt" || {
+            echo -e "${RED}Failed to install dependencies${RESET}"
+            echo "Try manually: pip3 install wsgidav cheroot requests"
+            exit 1
+        }
+    fi
+    
+    # Start server in background
+    nohup python3 "$SERVER_SCRIPT" > /tmp/zoMount.log 2>&1 &
+    SERVER_PID=$!
+    echo $SERVER_PID > /tmp/zoMount.pid
+    
+    # Wait for server to be ready
+    echo -e "${YELLOW}Waiting for server to start...${RESET}"
+    for i in {1..10}; do
+        if is_server_running; then
+            echo -e "${GREEN}✓ Server is running (PID: $SERVER_PID)${RESET}"
+            return 0
+        fi
+        sleep 1
+    done
+    
+    echo -e "${RED}✗ Server failed to start${RESET}"
+    echo "Check logs: tail /tmp/zoMount.log"
+    exit 1
+}
+
+# Mount filesystem
+mount_filesystem() {
+    local os=$(detect_os)
+    
+    echo -e "${CYAN}Mounting workspace...${RESET}"
+    
+    # Create mount point if it doesn't exist
+    mkdir -p "$ZO_MOUNT_POINT"
+    
+    case $os in
+        macos)
+            # macOS uses mount_webdav
+            if mount | grep -q "$ZO_MOUNT_POINT"; then
+                echo -e "${YELLOW}Already mounted at $ZO_MOUNT_POINT${RESET}"
+                return 0
+            fi
+            
+            mount_webdav -s http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" 2>/dev/null || {
+                echo -e "${RED}✗ Mount failed${RESET}"
+                echo "Try manually: mount_webdav http://localhost:$ZO_MOUNT_PORT $ZO_MOUNT_POINT"
+                exit 1
+            }
+            ;;
+            
+        linux)
+            # Linux uses davfs2
+            if ! command -v mount.davfs &> /dev/null; then
+                echo -e "${YELLOW}Installing davfs2...${RESET}"
+                sudo apt-get update && sudo apt-get install -y davfs2 || {
+                    echo -e "${RED}Failed to install davfs2${RESET}"
+                    echo "Install manually: sudo apt-get install davfs2"
+                    exit 1
+                }
+            fi
+            
+            if mount | grep -q "$ZO_MOUNT_POINT"; then
+                echo -e "${YELLOW}Already mounted at $ZO_MOUNT_POINT${RESET}"
+                return 0
+            fi
+            
+            # Mount using davfs2 (might need sudo)
+            sudo mount -t davfs http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" 2>/dev/null || {
+                echo -e "${RED}✗ Mount failed${RESET}"
+                echo "Try manually: sudo mount -t davfs http://localhost:$ZO_MOUNT_PORT $ZO_MOUNT_POINT"
+                exit 1
+            }
+            ;;
+            
+        windows)
+            # Windows uses net use
+            net use Z: http://localhost:$ZO_MOUNT_PORT 2>/dev/null || {
+                echo -e "${RED}✗ Mount failed${RESET}"
+                echo "Try manually: net use Z: http://localhost:$ZO_MOUNT_PORT"
+                exit 1
+            }
+            ZO_MOUNT_POINT="Z:"
+            ;;
+            
+        *)
+            echo -e "${RED}Unsupported OS${RESET}"
+            exit 1
+            ;;
+    esac
+    
+    echo -e "${GREEN}✓ Mounted at $ZO_MOUNT_POINT${RESET}"
+}
+
+# Unmount filesystem
+unmount_filesystem() {
+    local os=$(detect_os)
+    
+    echo -e "${CYAN}Unmounting workspace...${RESET}"
+    
+    case $os in
+        macos)
+            if mount | grep -q "$ZO_MOUNT_POINT"; then
+                umount "$ZO_MOUNT_POINT" 2>/dev/null || {
+                    echo -e "${RED}✗ Unmount failed${RESET}"
+                    exit 1
+                }
+            fi
+            ;;
+            
+        linux)
+            if mount | grep -q "$ZO_MOUNT_POINT"; then
+                sudo umount "$ZO_MOUNT_POINT" 2>/dev/null || {
+                    echo -e "${RED}✗ Unmount failed${RESET}"
+                    exit 1
+                }
+            fi
+            ;;
+            
+        windows)
+            net use Z: /delete 2>/dev/null || true
+            ;;
+    esac
+    
+    echo -e "${GREEN}✓ Unmounted${RESET}"
+}
+
+# Stop server
+stop_server() {
+    if [ -f /tmp/zoMount.pid ]; then
+        PID=$(cat /tmp/zoMount.pid)
+        if ps -p $PID > /dev/null 2>&1; then
+            echo -e "${CYAN}Stopping server (PID: $PID)...${RESET}"
+            kill $PID 2>/dev/null || true
+            rm /tmp/zoMount.pid
+            echo -e "${GREEN}✓ Server stopped${RESET}"
+        fi
+    fi
+}
+
+# Main command handler
+case "${1:-mount}" in
+    mount)
+        if is_server_running; then
+            echo -e "${GREEN}Server is already running${RESET}"
+        else
+            start_server
+        fi
+        mount_filesystem
+        echo ""
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo -e "${BOLD}  Zo Computer workspace mounted!${RESET}"
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${CYAN}Mount point:${RESET} $ZO_MOUNT_POINT"
+        echo -e "  ${CYAN}Status:${RESET}      $(mount | grep $ZO_MOUNT_POINT | head -1)"
+        echo ""
+        echo -e "${YELLOW}To unmount:${RESET} ./mount_zo unmount"
+        echo ""
+        ;;
+        
+    unmount)
+        unmount_filesystem
+        stop_server
+        ;;
+        
+    status)
+        if is_server_running; then
+            echo -e "${GREEN}✓ Server is running on port $ZO_MOUNT_PORT${RESET}"
+            if mount | grep -q "$ZO_MOUNT_POINT"; then
+                echo -e "${GREEN}✓ Mounted at $ZO_MOUNT_POINT${RESET}"
+            else
+                echo -e "${YELLOW}⚠ Server running but not mounted${RESET}"
+            fi
+        else
+            echo -e "${RED}✗ Server is not running${RESET}"
+        fi
+        ;;
+        
+    *)
+        echo "Usage: $0 {mount|unmount|status}"
+        exit 1
+        ;;
+esac
