@@ -84,9 +84,13 @@ start_server() {
     if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
         LOG_FILE="$TEMP/zoMount.log"
         PID_FILE="$TEMP/zoMount.pid"
+        SERVER_LOG="$LOG_FILE"
+        SERVER_PID_FILE="$PID_FILE"
     else
         LOG_FILE="/tmp/zoMount.log"
         PID_FILE="/tmp/zoMount.pid"
+        SERVER_LOG="$LOG_FILE"
+        SERVER_PID_FILE="$PID_FILE"
     fi
     
     # Start server in background
@@ -95,12 +99,19 @@ start_server() {
     SERVER_PID=$!
     echo $SERVER_PID > "$PID_FILE"
     
-    # Wait for server to be ready
+    # Wait for server to be ready and extract port
     echo -e "${YELLOW}Waiting for server to start...${RESET}"
     for i in {1..15}; do
-        if is_server_running; then
-            echo -e "${GREEN}✓ Server is running (PID: $SERVER_PID)${RESET}"
-            return 0
+        if [ -f "$LOG_FILE" ]; then
+            # Extract port from log
+            PORT=$(grep -oP 'http://localhost:\K\d+' "$LOG_FILE" 2>/dev/null | head -1)
+            if [ -n "$PORT" ]; then
+                ZO_MOUNT_PORT=$PORT
+                if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/ 2>/dev/null | grep -q "200\|301\|302\|401"; then
+                    echo -e "${GREEN}✓ Server is running on port $PORT (PID: $SERVER_PID)${RESET}"
+                    return 0
+                fi
+            fi
         fi
         sleep 1
     done
@@ -191,13 +202,53 @@ EOF
             ;;
             
         windows)
-            # Windows uses net use
-            net use Z: http://localhost:$ZO_MOUNT_PORT 2>/dev/null || {
+            # Windows uses net use with WebClient service
+            echo -e "${CYAN}Checking WebClient service...${RESET}"
+            
+            # Check if WebClient service is running
+            if ! sc query WebClient | grep -q "RUNNING"; then
+                echo -e "${YELLOW}Starting WebClient service...${RESET}"
+                net start WebClient 2>/dev/null || {
+                    echo -e "${RED}Failed to start WebClient service${RESET}"
+                    echo "Run as Administrator: net start WebClient"
+                    exit 1
+                }
+            fi
+            
+            echo -e "${CYAN}Mounting to Z: drive...${RESET}"
+            
+            # Try to mount
+            if net use Z: http://localhost:$ZO_MOUNT_PORT 2>&1 | tee /tmp/mount_output.txt | grep -q "successfully\|command completed"; then
+                # Verify mount actually worked
+                sleep 2
+                if net use | grep -q "Z:"; then
+                    ZO_MOUNT_POINT="Z:"
+                    echo -e "${GREEN}✓ Successfully mounted to Z:${RESET}"
+                    
+                    # Test if we can actually list files
+                    if ls Z: > /dev/null 2>&1; then
+                        echo -e "${GREEN}✓ Mount verified - files accessible${RESET}"
+                    else
+                        echo -e "${YELLOW}⚠ Mount succeeded but files not immediately accessible${RESET}"
+                        echo -e "${DIM}Try: dir Z:${RESET}"
+                    fi
+                else
+                    echo -e "${RED}✗ Mount command succeeded but drive not visible${RESET}"
+                    cat /tmp/mount_output.txt
+                    exit 1
+                fi
+            else
                 echo -e "${RED}✗ Mount failed${RESET}"
-                echo "Try manually: net use Z: http://localhost:$ZO_MOUNT_PORT"
+                echo ""
+                echo -e "${YELLOW}Error output:${RESET}"
+                cat /tmp/mount_output.txt
+                echo ""
+                echo -e "${YELLOW}Troubleshooting:${RESET}"
+                echo "1. Make sure WebClient service is running: sc query WebClient"
+                echo "2. Try as Administrator"
+                echo "3. Manual mount: net use Z: http://localhost:$ZO_MOUNT_PORT"
                 exit 1
-            }
-            ZO_MOUNT_POINT="Z:"
+            fi
             ;;
             
         *)
@@ -206,7 +257,13 @@ EOF
             ;;
     esac
     
-    echo -e "${GREEN}✓ Mounted at $ZO_MOUNT_POINT${RESET}"
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${GREEN}✓ Workspace successfully mounted!${RESET}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "  Mount point: ${BOLD}$ZO_MOUNT_POINT${RESET}"
+    echo -e "  Server: http://localhost:$ZO_MOUNT_PORT"
+    echo ""
 }
 
 # Unmount filesystem
