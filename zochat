@@ -206,6 +206,360 @@ HORSE
             echo ""
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
+        3)
+            # User Services Management
+            while true; do
+                clear
+                echo -e "${MAGENTA}"
+                cat << "BANNER"
+    ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+    ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+      ███╔╝ ██║   ██║    ██║     ███████║███████║   ██║   
+     ███╔╝  ██║   ██║    ██║     ██╔══██║██╔══██║   ██║   
+    ███████╗╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║   
+    ╚══════╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+BANNER
+                echo -e "${RESET}"
+                echo ""
+                echo -e "${BOLD}           User Services${RESET}"
+                echo ""
+                echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -e "  ${CYAN}[1]${RESET} ${BOLD}List Services${RESET}   - View all services"
+                echo -e "  ${CYAN}[2]${RESET} ${BOLD}Create Service${RESET}  - Deploy new service"
+                echo -e "  ${CYAN}[3]${RESET} ${BOLD}Back${RESET}            - Return to main menu"
+                echo ""
+                echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -n "Choice: "
+                read service_choice
+                
+                case $service_choice in
+                    1)
+                        # List services
+                        echo ""
+                        echo -e "${YELLOW}Fetching services...${RESET}"
+                        echo ""
+                        
+                        services=$(curl -s -X GET "$API_BASE/user-services/" \
+                            -H "cookie: access_token=$ACCESS_TOKEN" \
+                            -H "origin: https://$DOMAIN")
+                        
+                        if command -v jq > /dev/null 2>&1; then
+                            service_count=$(echo "$services" | jq '. | length' 2>/dev/null)
+                            
+                            if [ "$service_count" = "0" ] || [ -z "$service_count" ]; then
+                                echo -e "${DIM}No services found.${RESET}"
+                            else
+                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                                echo -e "  ${BOLD}Active Services ($service_count)${RESET}"
+                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                                
+                                for i in $(seq 0 $(($service_count - 1))); do
+                                    label=$(echo "$services" | jq -r ".[$i].label")
+                                    protocol=$(echo "$services" | jq -r ".[$i].protocol")
+                                    port=$(echo "$services" | jq -r ".[$i].local_port")
+                                    http_url=$(echo "$services" | jq -r ".[$i].http_url")
+                                    tcp_addr=$(echo "$services" | jq -r ".[$i].tcp_addr")
+                                    
+                                    # Check service health
+                                    status="${YELLOW}●${RESET}" # Default checking
+                                    if [ "$http_url" != "null" ]; then
+                                        # Timeout 2s, check if 200-399
+                                        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "$http_url")
+                                        if [[ "$code" =~ ^[23] ]]; then
+                                            status="${GREEN}●${RESET}"
+                                        else
+                                            status="${RED}●${RESET}"
+                                        fi
+                                    else
+                                        # Assume TCP is up if it exists (hard to check without nc)
+                                        status="${GREEN}●${RESET}"
+                                    fi
+                                    
+                                    echo ""
+                                    echo -e "  $status ${BOLD}$label${RESET} ${DIM}($protocol:$port)${RESET}"
+                                    
+                                    if [ "$http_url" != "null" ]; then
+                                        echo -e "      ${CYAN}HTTP:${RESET} $http_url"
+                                    fi
+                                    
+                                    if [ "$tcp_addr" != "null" ]; then
+                                        echo -e "      ${CYAN}TCP:${RESET}  $tcp_addr"
+                                    fi
+                                done
+                                
+                                echo ""
+                                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            fi
+                        else
+                            echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
+                        fi
+                        echo ""
+                        read -n 1 -s -r -p "Press any key to continue..."
+                        ;;
+                    2)
+                        # Create service
+                        echo ""
+                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        echo -e "  ${BOLD}Create New Service${RESET}"
+                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        echo ""
+                        echo -n "Service label: "
+                        read svc_label
+                        echo -n "Protocol (http/tcp): "
+                        read svc_protocol
+                        echo -n "Local port: "
+                        read svc_port
+                        echo -n "Entrypoint command: "
+                        read svc_entrypoint
+                        echo -n "Working directory: "
+                        read svc_workdir
+                        
+                        service_json="{\"label\":\"$svc_label\",\"protocol\":\"$svc_protocol\",\"local_port\":$svc_port,\"entrypoint\":\"$svc_entrypoint\",\"workdir\":\"$svc_workdir\"}"
+                        
+                        echo ""
+                        echo -e "${YELLOW}Creating service...${RESET}"
+                        
+                        result=$(curl -s -X POST "$API_BASE/user-services/" \
+                            -H "content-type: application/json" \
+                            -H "cookie: access_token=$ACCESS_TOKEN" \
+                            -H "origin: https://$DOMAIN" \
+                            -d "$service_json")
+                            
+                        echo ""
+                        echo -e "${GREEN}Service created!${RESET}"
+                        echo ""
+                        read -n 1 -s -r -p "Press any key to continue..."
+                        ;;
+                    3)
+                        break
+                        ;;
+                    *)
+                        echo "Invalid choice"
+                        sleep 1
+                        ;;
+                esac
+            done
+            ;;
+        4)
+            # View billing information
+            echo ""
+            echo -e "${YELLOW}Fetching billing information...${RESET}"
+            echo ""
+            
+            billing=$(curl -s -X GET "$API_BASE/billing/usage-alert" \
+                -H "cookie: access_token=$ACCESS_TOKEN" \
+                -H "origin: https://$DOMAIN")
+            
+            usage_data=$(curl -s -X GET "$API_BASE/billing/meter-usage?meter_kind=chat&timezone=America%2FChicago" \
+                -H "cookie: access_token=$ACCESS_TOKEN" \
+                -H "origin: https://$DOMAIN")
+            
+            if command -v jq > /dev/null 2>&1; then
+                credits_cents=$(echo "$billing" | jq -r '.remaining_credits_amount_cents' 2>/dev/null)
+                credits_dollars=$(awk "BEGIN {printf \"%.2f\", $credits_cents / 100}")
+                
+                invoice_total=$(echo "$billing" | jq -r '.upcoming_invoice.total_display' 2>/dev/null)
+                next_payment=$(echo "$billing" | jq -r '.upcoming_invoice.next_payment_attempt' 2>/dev/null)
+                
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Billing Overview${RESET}"
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -e "  ${BOLD}Credit Balance:${RESET} ${GREEN}\$$credits_dollars${RESET}"
+                echo -e "  ${BOLD}Next Invoice:${RESET}   ${YELLOW}$invoice_total${RESET}"
+                echo ""
+                
+                # Token usage chart
+                data_count=$(echo "$usage_data" | jq -r '.data | length' 2>/dev/null)
+                
+                if [ "$data_count" -gt 0 ]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "  ${BOLD}Token Usage Chart (Last 24h)${RESET}"
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo ""
+                    
+                    # Find max value for scaling
+                    max_value=0
+                    for i in $(seq 0 $(($data_count - 1))); do
+                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                        value=${value%.*}  # Remove decimal
+                        [ $value -gt $max_value ] && max_value=$value
+                    done
+                    
+                    # Show last 20 data points
+                    start_idx=$(($data_count - 20))
+                    [ $start_idx -lt 0 ] && start_idx=0
+                    
+                    for i in $(seq $start_idx $(($data_count - 1))); do
+                        timestamp=$(echo "$usage_data" | jq -r ".data[$i].bucket_start_time" 2>/dev/null)
+                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                        value=${value%.*}
+                        
+                        # Format time (HH:MM)
+                        time_str=$(date -d @$timestamp +"%H:%M" 2>/dev/null || echo "??:??")
+                        
+                        # Calculate bar width (max 40 chars)
+                        if [ $max_value -gt 0 ]; then
+                            bar_width=$((value * 40 / max_value))
+                        else
+                            bar_width=0
+                        fi
+                        
+                        # Create bar
+                        bar=""
+                        for ((j=0; j<bar_width; j++)); do
+                            bar+="█"
+                        done
+                        
+                        # Format value with K suffix if large
+                        if [ $value -gt 10000 ]; then
+                            value_display=$(awk "BEGIN {printf \"%.1fK\", $value / 1000}")
+                        else
+                            value_display=$(printf "%'d" $value 2>/dev/null || echo $value)
+                        fi
+                        
+                        printf "  ${DIM}%5s${RESET} ${GREEN}%-40s${RESET} ${CYAN}%8s${RESET}\n" "$time_str" "$bar" "$value_display"
+                    done
+                    
+                    echo ""
+                fi
+                
+                # Show usage breakdown
+                period_count=$(echo "$billing" | jq -r '.upcoming_invoice.periods | length' 2>/dev/null)
+                
+                if [ "$period_count" -gt 0 ]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "  ${BOLD}Usage Breakdown${RESET}"
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    
+                    for period_idx in $(seq 0 $(($period_count - 1))); do
+                        period_label=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].label" 2>/dev/null)
+                        line_count=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines | length" 2>/dev/null)
+                        
+                        echo ""
+                        echo -e "  ${BOLD}$period_label${RESET}"
+                        
+                        for line_idx in $(seq 0 $(($line_count - 1))); do
+                            desc=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].description" 2>/dev/null)
+                            qty=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].quantity" 2>/dev/null)
+                            amount=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].amount_display" 2>/dev/null)
+                            
+                            # Format quantity with commas
+                            qty_formatted=$(printf "%'d" $qty 2>/dev/null || echo $qty)
+                            
+                            printf "    ${DIM}%-35s${RESET} %15s  ${GREEN}%8s${RESET}\n" "$desc" "$qty_formatted" "$amount"
+                        done
+                    done
+                    
+                    echo ""
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                fi
+            else
+                echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
+            fi
+            echo ""
+            read -n 1 -s -r -p "Press any key to continue..."
+            ;;
+        5)
+            # System Stats
+            clear
+            echo -e "${CYAN}"
+            cat << 'HORSE'
+                                                                         
+                                     <k@$$$$$$$$$$$$$$$$_               
+                   )/ckWBB@x.      ($$$$$$$$$$$$$$$$$$$@.               
+                  b$$$@BBM_\@%    ~B$$$$$$$$$$$$$$$$$$$h                
+                  b<[@$$$$$@L(B\. \$$$$$$$$$$$$$$$$$$@W                 
+                  bvC@@$$$$$$B`Bb t$$$$$$$$$$$$$$$$$8'.                 
+                  b@#. :@$$$$$@ @Ou$$$$$$@$@$$@@ot                      
+                  w^m,  f@$@."\'`zm$$@.                                 
+                   ..   /@$$$$$$@^@$$#                                  
+                 .h$@C .@$$$$$B^h@@@@i                                  
+                 lBu@W.>\B$$$$@bbkhBB                                   
+                .@Y  lB@@"B$$$@@$$$$@@                                  
+                &&. .@+.@$^$$@"B$$$$@XwqZ(.                             
+               .8O, hQ  IBBBBn#@$$$$$$$$$$$B@B@BBi                      
+                   nd        b@@@$@@@@$$$$$$$@'@$@{                     
+                   [@q'         .O8'8@$$$$$$$@ $$$&                     
+                     ..       "@%"@$$$$$$$$$^ $$$&                     
+                             M$$@X@$$$$$@h(    $$$&                     
+                             B$$$O_B$$$B       $$$&                     
+                              f@@h. ?@@*       @$$&                     
+                                d@j   ?B@W     YB$&                     
+                              -B@"    *BJ       "@B}                    
+                           .]@8    .&@C                                 
+                          _Bw^    MBJ                                   
+                         tttl   a@@B'                                   
+                                                                         
+HORSE
+            echo -e "${RESET}"
+            echo -e "${BOLD}           System Statistics${RESET}"
+            echo ""
+            echo -e "${YELLOW}Fetching metrics...${RESET}"
+            
+            # Call /exec API
+            stats_resp=$(curl -s -X POST "$API_BASE/exec" \
+                -H "content-type: application/json" \
+                -H "cookie: access_token=$ACCESS_TOKEN" \
+                -H "origin: https://$DOMAIN" \
+                -d '{"command": "uv run /__substrate/sys_stats.py --measure_speed"}')
+            
+            # Extract stdout which contains the actual JSON data
+            stats_json=$(echo "$stats_resp" | jq -r '.stdout' 2>/dev/null)
+            
+            if [ -n "$stats_json" ] && [ "$stats_json" != "null" ]; then
+                # Parse metrics
+                os_name=$(echo "$stats_json" | jq -r '.os' 2>/dev/null)
+                os_ver=$(echo "$stats_json" | jq -r '.os_version' 2>/dev/null)
+                arch=$(echo "$stats_json" | jq -r '.arch' 2>/dev/null)
+                
+                cpu_cores=$(echo "$stats_json" | jq -r '.cpu.physical_cores' 2>/dev/null)
+                cpu_usage=$(echo "$stats_json" | jq -r '.cpu.usage_percent' 2>/dev/null)
+                
+                mem_total=$(echo "$stats_json" | jq -r '.memory.total_gb' 2>/dev/null)
+                mem_used=$(echo "$stats_json" | jq -r '.memory.used_gb' 2>/dev/null)
+                mem_pct=$(echo "$stats_json" | jq -r '.memory.percent' 2>/dev/null)
+                
+                disk_total=$(echo "$stats_json" | jq -r '.disks["/"].total_gb' 2>/dev/null)
+                disk_used=$(echo "$stats_json" | jq -r '.disks["/"].used_gb' 2>/dev/null)
+                disk_pct=$(echo "$stats_json" | jq -r '.disks["/"].percent' 2>/dev/null)
+                
+                dl_speed=$(echo "$stats_json" | jq -r '.network.download_mbps' 2>/dev/null)
+                ul_speed=$(echo "$stats_json" | jq -r '.network.upload_mbps' 2>/dev/null)
+                
+                uptime_sec=$(echo "$stats_json" | jq -r '.uptime_seconds' 2>/dev/null)
+                uptime_hrs=$(awk "BEGIN {printf \"%.1f\", $uptime_sec / 3600}")
+                
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}System Information${RESET}"
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}OS:${RESET}        $os_name $os_ver ($arch)"
+                echo -e "  ${BOLD}Uptime:${RESET}    ${uptime_hrs} hours"
+                echo ""
+                echo -e "  ${BOLD}CPU:${RESET}       ${cpu_usage}% (${cpu_cores} Cores)"
+                echo -e "  ${BOLD}Memory:${RESET}    ${mem_used}GB / ${mem_total}GB (${mem_pct}%)"
+                echo -e "  ${BOLD}Disk:${RESET}      ${disk_used}GB / ${disk_total}GB (${disk_pct}%)"
+                echo ""
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Network Speed${RESET}"
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Download:${RESET}  ${GREEN}${dl_speed} Mbps${RESET}"
+                echo -e "  ${BOLD}Upload:${RESET}    ${GREEN}${ul_speed} Mbps${RESET}"
+                echo ""
+            else
+                echo -e "${RED}Failed to retrieve system stats.${RESET}"
+            fi
+            
+            read -n 1 -s -r -p "Press any key to continue..."
+            ;;
+        6)
+            echo ""
+            echo -e "${DIM}Goodbye!${RESET}"
+            echo ""
+            exit 0
+            ;;
         *)
             echo "Invalid choice"
             sleep 1
