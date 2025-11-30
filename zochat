@@ -80,7 +80,7 @@ update_script() {
     # Check if running from git repo
     if [ -d ".git" ] || git rev-parse --git-dir > /dev/null 2>&1; then
         echo -e "${DIM}Git repository detected. Pulling changes...${RESET}"
-        if git pull origin main; then
+        if git pull -q origin main; then
             echo ""
             echo -e "${GREEN}✓ Updated successfully!${RESET}"
             echo -e "${DIM}Restarting application...${RESET}"
@@ -141,6 +141,8 @@ BANNER
     echo ""
     echo -n "Choice: "
     read main_choice
+    # Strip whitespace/newlines
+    main_choice=$(echo "$main_choice" | tr -d '[:space:]')
 
     case $main_choice in
         1)
