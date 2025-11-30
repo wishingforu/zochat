@@ -272,127 +272,6 @@ BANNER
             ;;
         3)
             # User Services Management
-            echo ""
-            echo -e "${YELLOW}Fetching billing information...${RESET}"
-            echo ""
-            
-            billing=$(curl -s -X GET "$API_BASE/billing/usage-alert" \
-                -H "cookie: access_token=$ACCESS_TOKEN" \
-                -H "origin: https://$DOMAIN")
-            
-            usage_data=$(curl -s -X GET "$API_BASE/billing/meter-usage?meter_kind=chat&timezone=America%2FChicago" \
-                -H "cookie: access_token=$ACCESS_TOKEN" \
-                -H "origin: https://$DOMAIN")
-            
-            if command -v jq > /dev/null 2>&1; then
-                credits_cents=$(echo "$billing" | jq -r '.remaining_credits_amount_cents' 2>/dev/null)
-                credits_dollars=$(awk "BEGIN {printf \"%.2f\", $credits_cents / 100}")
-                
-                invoice_total=$(echo "$billing" | jq -r '.upcoming_invoice.total_display' 2>/dev/null)
-                next_payment=$(echo "$billing" | jq -r '.upcoming_invoice.next_payment_attempt' 2>/dev/null)
-                
-                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                echo -e "  ${BOLD}Billing Overview${RESET}"
-                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                echo ""
-                echo -e "  ${BOLD}Credit Balance:${RESET} ${GREEN}\$$credits_dollars${RESET}"
-                echo -e "  ${BOLD}Next Invoice:${RESET}   ${YELLOW}$invoice_total${RESET}"
-                echo ""
-                
-                # Token usage chart
-                data_count=$(echo "$usage_data" | jq -r '.data | length' 2>/dev/null)
-                
-                if [ "$data_count" -gt 0 ]; then
-                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                    echo -e "  ${BOLD}Token Usage Chart (Last 24h)${RESET}"
-                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                    echo ""
-                    
-                    # Find max value for scaling
-                    max_value=0
-                    for i in $(seq 0 $(($data_count - 1))); do
-                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
-                        value=${value%.*}  # Remove decimal
-                        [ $value -gt $max_value ] && max_value=$value
-                    done
-                    
-                    # Show last 20 data points
-                    start_idx=$(($data_count - 20))
-                    [ $start_idx -lt 0 ] && start_idx=0
-                    
-                    for i in $(seq $start_idx $(($data_count - 1))); do
-                        timestamp=$(echo "$usage_data" | jq -r ".data[$i].bucket_start_time" 2>/dev/null)
-                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
-                        value=${value%.*}
-                        
-                        # Format time (HH:MM)
-                        time_str=$(date -d @$timestamp +"%H:%M" 2>/dev/null || echo "??:??")
-                        
-                        # Calculate bar width (max 40 chars)
-                        if [ $max_value -gt 0 ]; then
-                            bar_width=$((value * 40 / max_value))
-                        else
-                            bar_width=0
-                        fi
-                        
-                        # Create bar
-                        bar=""
-                        for ((j=0; j<bar_width; j++)); do
-                            bar+="█"
-                        done
-                        
-                        # Format value with K suffix if large
-                        if [ $value -gt 10000 ]; then
-                            value_display=$(awk "BEGIN {printf \"%.1fK\", $value / 1000}")
-                        else
-                            value_display=$(printf "%'d" $value 2>/dev/null || echo $value)
-                        fi
-                        
-                        printf "  ${DIM}%5s${RESET} ${GREEN}%-40s${RESET} ${CYAN}%8s${RESET}\n" "$time_str" "$bar" "$value_display"
-                    done
-                    
-                    echo ""
-                fi
-                
-                # Show usage breakdown
-                period_count=$(echo "$billing" | jq -r '.upcoming_invoice.periods | length' 2>/dev/null)
-                
-                if [ "$period_count" -gt 0 ]; then
-                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                    echo -e "  ${BOLD}Usage Breakdown${RESET}"
-                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                    
-                    for period_idx in $(seq 0 $(($period_count - 1))); do
-                        period_label=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].label" 2>/dev/null)
-                        line_count=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines | length" 2>/dev/null)
-                        
-                        echo ""
-                        echo -e "  ${BOLD}$period_label${RESET}"
-                        
-                        for line_idx in $(seq 0 $(($line_count - 1))); do
-                            desc=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].description" 2>/dev/null)
-                            qty=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].quantity" 2>/dev/null)
-                            amount=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].amount_display" 2>/dev/null)
-                            
-                            # Format quantity with commas
-                            qty_formatted=$(printf "%'d" $qty 2>/dev/null || echo $qty)
-                            
-                            printf "    ${DIM}%-35s${RESET} %15s  ${GREEN}%8s${RESET}\n" "$desc" "$qty_formatted" "$amount"
-                        done
-                    done
-                    
-                    echo ""
-                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                fi
-            else
-                echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
-            fi
-            echo ""
-            echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
-            ) | less -R
-            ;;
-        4)
-            # View billing information
             while true; do
                 clear
                 echo -e "${MAGENTA}"
@@ -423,6 +302,7 @@ BANNER
                     1)
                         # List services
                         echo ""
+                        (
                         echo -e "${YELLOW}Fetching services...${RESET}"
                         echo ""
                         
@@ -541,6 +421,128 @@ BANNER
                         ;;
                 esac
             done
+            ;;
+        4)
+            # View billing information
+            echo ""
+            (
+            echo -e "${YELLOW}Fetching billing information...${RESET}"
+            echo ""
+            
+            billing=$(curl -s -X GET "$API_BASE/billing/usage-alert" \
+                -H "cookie: access_token=$ACCESS_TOKEN" \
+                -H "origin: https://$DOMAIN")
+            
+            usage_data=$(curl -s -X GET "$API_BASE/billing/meter-usage?meter_kind=chat&timezone=America%2FChicago" \
+                -H "cookie: access_token=$ACCESS_TOKEN" \
+                -H "origin: https://$DOMAIN")
+            
+            if command -v jq > /dev/null 2>&1; then
+                credits_cents=$(echo "$billing" | jq -r '.remaining_credits_amount_cents' 2>/dev/null)
+                credits_dollars=$(awk "BEGIN {printf \"%.2f\", $credits_cents / 100}")
+                
+                invoice_total=$(echo "$billing" | jq -r '.upcoming_invoice.total_display' 2>/dev/null)
+                next_payment=$(echo "$billing" | jq -r '.upcoming_invoice.next_payment_attempt' 2>/dev/null)
+                
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Billing Overview${RESET}"
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -e "  ${BOLD}Credit Balance:${RESET} ${GREEN}\$$credits_dollars${RESET}"
+                echo -e "  ${BOLD}Next Invoice:${RESET}   ${YELLOW}$invoice_total${RESET}"
+                echo ""
+                
+                # Token usage chart
+                data_count=$(echo "$usage_data" | jq -r '.data | length' 2>/dev/null)
+                
+                if [ "$data_count" -gt 0 ]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "  ${BOLD}Token Usage Chart (Last 24h)${RESET}"
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo ""
+                    
+                    # Find max value for scaling
+                    max_value=0
+                    for i in $(seq 0 $(($data_count - 1))); do
+                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                        value=${value%.*}  # Remove decimal
+                        [ $value -gt $max_value ] && max_value=$value
+                    done
+                    
+                    # Show last 20 data points
+                    start_idx=$(($data_count - 20))
+                    [ $start_idx -lt 0 ] && start_idx=0
+                    
+                    for i in $(seq $start_idx $(($data_count - 1))); do
+                        timestamp=$(echo "$usage_data" | jq -r ".data[$i].bucket_start_time" 2>/dev/null)
+                        value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                        value=${value%.*}
+                        
+                        # Format time (HH:MM)
+                        time_str=$(date -d @$timestamp +"%H:%M" 2>/dev/null || echo "??:??")
+                        
+                        # Calculate bar width (max 40 chars)
+                        if [ $max_value -gt 0 ]; then
+                            bar_width=$((value * 40 / max_value))
+                        else
+                            bar_width=0
+                        fi
+                        
+                        # Create bar
+                        bar=""
+                        for ((j=0; j<bar_width; j++)); do
+                            bar+="█"
+                        done
+                        
+                        # Format value with K suffix if large
+                        if [ $value -gt 10000 ]; then
+                            value_display=$(awk "BEGIN {printf \"%.1fK\", $value / 1000}")
+                        else
+                            value_display=$(printf "%'d" $value 2>/dev/null || echo $value)
+                        fi
+                        
+                        printf "  ${DIM}%5s${RESET} ${GREEN}%-40s${RESET} ${CYAN}%8s${RESET}\n" "$time_str" "$bar" "$value_display"
+                    done
+                    
+                    echo ""
+                fi
+                
+                # Show usage breakdown
+                period_count=$(echo "$billing" | jq -r '.upcoming_invoice.periods | length' 2>/dev/null)
+                
+                if [ "$period_count" -gt 0 ]; then
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "  ${BOLD}Usage Breakdown${RESET}"
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    
+                    for period_idx in $(seq 0 $(($period_count - 1))); do
+                        period_label=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].label" 2>/dev/null)
+                        line_count=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines | length" 2>/dev/null)
+                        
+                        echo ""
+                        echo -e "  ${BOLD}$period_label${RESET}"
+                        
+                        for line_idx in $(seq 0 $(($line_count - 1))); do
+                            desc=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].description" 2>/dev/null)
+                            qty=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].quantity" 2>/dev/null)
+                            amount=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].amount_display" 2>/dev/null)
+                            
+                            # Format quantity with commas
+                            qty_formatted=$(printf "%'d" $qty 2>/dev/null || echo $qty)
+                            
+                            printf "    ${DIM}%-35s${RESET} %15s  ${GREEN}%8s${RESET}\n" "$desc" "$qty_formatted" "$amount"
+                        done
+                    done
+                    
+                    echo ""
+                    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                fi
+            else
+                echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
+            fi
+            echo ""
+            echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
+            ) | less -R
             ;;
         5)
             echo ""
