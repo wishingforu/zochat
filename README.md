@@ -11,14 +11,15 @@
 
 A powerful CLI for [Zo Computer](https://zo.computer) 
 
+
+## Installation
+*You don't need to be SSH'd into your Zo Chat for this to work*
+
 ### Requirements
 - **Bash** 4.0+
 - **curl** (for API requests)
 - **jq** (for JSON parsing & charts)
 - **Unix-like OS** (Linux, macOS, WSL)
-
-## Installation
-
 
 
 ### Option 1: Quick Install (Git)
