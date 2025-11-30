@@ -140,11 +140,12 @@ BANNER
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     echo -e "  ${CYAN}[1]${RESET} ${BOLD}AI Models${RESET}         - Start a conversation"
-    echo -e "  ${CYAN}[2]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
-    echo -e "  ${CYAN}[3]${RESET} ${BOLD}Services${RESET}          - Manage services"
-    echo -e "  ${CYAN}[4]${RESET} ${BOLD}Billing${RESET}           - Credits and usage"
-    echo -e "  ${CYAN}[5]${RESET} ${BOLD}System${RESET}            - View machine stats"
-    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Exit${RESET}              - Close application"
+    echo -e "  ${CYAN}[2]${RESET} ${BOLD}Chats${RESET}             - History and logs"
+    echo -e "  ${CYAN}[3]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
+    echo -e "  ${CYAN}[4]${RESET} ${BOLD}Services${RESET}          - Manage services"
+    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Billing${RESET}           - Credits and usage"
+    echo -e "  ${CYAN}[6]${RESET} ${BOLD}System${RESET}            - View machine stats"
+    echo -e "  ${CYAN}[7]${RESET} ${BOLD}Exit${RESET}              - Close application"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
@@ -159,6 +160,138 @@ BANNER
             break
             ;;
         2)
+            # Chats / History
+            while true; do
+                clear
+                echo -e "${CYAN}"
+                cat << "BANNER"
+     ██████╗██╗  ██╗ █████╗ ████████╗███████╗
+    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝██╔════╝
+    ██║     ███████║███████║   ██║   ███████╗
+    ██║     ██╔══██║██╔══██║   ██║   ╚════██║
+    ╚██████╗██║  ██║██║  ██║   ██║   ███████║
+     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝
+BANNER
+                echo -e "${RESET}"
+                echo ""
+                echo -e "${BOLD}           Conversation History${RESET}"
+                echo ""
+                echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -e "  ${CYAN}[1]${RESET} ${BOLD}Chats${RESET}             - AI conversations"
+                echo -e "  ${CYAN}[2]${RESET} ${BOLD}Emails${RESET}            - Email logs"
+                echo -e "  ${CYAN}[3]${RESET} ${BOLD}Agents${RESET}            - Agent activities"
+                echo -e "  ${CYAN}[4]${RESET} ${BOLD}Texts${RESET}             - SMS logs"
+                echo -e "  ${CYAN}[5]${RESET} ${BOLD}Back${RESET}              - Return to main menu"
+                echo ""
+                echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -n "Choice: "
+                read chat_type_choice
+                
+                case $chat_type_choice in
+                    1) type_param="chat"; type_label="Chats" ;;
+                    2) type_param="email"; type_label="Emails" ;;
+                    3) type_param="agent"; type_label="Agents" ;;
+                    4) type_param="text"; type_label="Texts" ;;
+                    5) break ;;
+                    *) echo "Invalid choice"; sleep 1; continue ;;
+                esac
+                
+                # Fetch conversations
+                echo ""
+                echo -e "${YELLOW}Fetching $type_label...${RESET}"
+                
+                convs_resp=$(curl -s -X GET "$API_BASE/conversations?limit=50&offset=0&conversation_type=$type_param" \
+                    -H "cookie: access_token=$ACCESS_TOKEN" \
+                    -H "origin: https://$DOMAIN")
+                
+                if command -v jq > /dev/null 2>&1; then
+                    conv_count=$(echo "$convs_resp" | jq '. | length' 2>/dev/null)
+                    
+                    if [ "$conv_count" = "0" ] || [ -z "$conv_count" ]; then
+                        echo -e "${DIM}No conversations found.${RESET}"
+                        read -n 1 -s -r -p "Press any key to continue..."
+                        continue
+                    fi
+                    
+                    # Show list
+                    while true; do
+                        clear
+                        echo -e "${BOLD}           $type_label List${RESET}"
+                        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        
+                        # Display first 20 or so
+                        for i in $(seq 0 $(($conv_count - 1))); do
+                            id=$(echo "$convs_resp" | jq -r ".[$i].id")
+                            title=$(echo "$convs_resp" | jq -r ".[$i].title // \"Untitled\"")
+                            date=$(echo "$convs_resp" | jq -r ".[$i].created_at")
+                            # Simple date format cleanup if possible, else raw
+                            date_short=$(echo "$date" | cut -d'T' -f1)
+                            
+                            printf "  ${CYAN}[%d]${RESET} %-40s ${DIM}%s${RESET}\n" $((i+1)) "${title:0:40}" "$date_short"
+                        done
+                        echo ""
+                        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        echo -e "${DIM}Enter number to view, or 'b' to back${RESET}"
+                        echo -n "Select: "
+                        read sel_conv
+                        
+                        if [ "$sel_conv" = "b" ]; then
+                            break
+                        fi
+                        
+                        if [[ "$sel_conv" =~ ^[0-9]+$ ]] && [ "$sel_conv" -ge 1 ] && [ "$sel_conv" -le "$conv_count" ]; then
+                            idx=$(($sel_conv - 1))
+                            conv_id=$(echo "$convs_resp" | jq -r ".[$idx].id")
+                            
+                            # Fetch details
+                            echo ""
+                            echo -e "${YELLOW}Loading conversation...${RESET}"
+                            
+                            detail_resp=$(curl -s -X GET "$API_BASE/conversations/$conv_id" \
+                                -H "cookie: access_token=$ACCESS_TOKEN" \
+                                -H "origin: https://$DOMAIN")
+                                
+                            # Parse messages
+                            # We want to extract parts from messages array
+                            # Message structure: .messages[].parts[].content
+                            # Filter by part_kind: user-prompt or text
+                            
+                            clear
+                            echo -e "${BOLD}Conversation View${RESET}"
+                            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            
+                            echo "$detail_resp" | jq -r '.messages[] | .parts[] | select(.part_kind=="user-prompt" or .part_kind=="text") | "\(.part_kind): \(.content)\n---"' | while read -r line; do
+                                if [[ "$line" == "user-prompt:"* ]]; then
+                                    content=${line#user-prompt: }
+                                    echo -e "${BOLD}User:${RESET}"
+                                    echo -e "$content"
+                                    echo ""
+                                elif [[ "$line" == "text:"* ]]; then
+                                    content=${line#text: }
+                                    echo -e "${CYAN}AI:${RESET}"
+                                    echo -e "$content"
+                                    echo ""
+                                elif [[ "$line" == "---" ]]; then
+                                    echo -e "${DIM}─────────────────────────────────────────────────────${RESET}"
+                                fi
+                            done 2>/dev/null
+                            
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to return to list..."
+                        else
+                            echo "Invalid selection"
+                            sleep 1
+                        fi
+                    done
+                else
+                    echo -e "${RED}Error: jq not installed.${RESET}"
+                    read -n 1 -s -r -p "Press any key to continue..."
+                fi
+            done
+            ;;
+        3)
             # Events Management
             while true; do
                 clear
@@ -206,7 +339,7 @@ HORSE
             echo ""
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        3)
+        4)
             # User Services Management
             while true; do
                 clear
@@ -378,7 +511,7 @@ BANNER
                 esac
             done
             ;;
-        4)
+        5)
             # View billing information
             echo ""
             echo -e "${YELLOW}Fetching billing information...${RESET}"
@@ -498,7 +631,7 @@ BANNER
             echo ""
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        5)
+        6)
             # System Stats
             clear
             echo -e "${CYAN}"
@@ -590,7 +723,7 @@ HORSE
             
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        6)
+        7)
             echo ""
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""
