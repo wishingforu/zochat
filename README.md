@@ -70,12 +70,6 @@ When you first run `./zochat`, you'll be prompted for:
    - Go to **Application** > **Cookies** > **.zo.computer**
    - Copy the value of `access_token`
      
-------------------------------or-----------------------------------
-   - Go to your Zo Computer
-   - Go to **Settings** > **Developer** > **Edit ZO_CLIENT_IDENTITY_TOKEN**
-   - Copy and Paste the `access_token/ ZO_CLIENT_IDENTITY_TOKEN`
-
-   
 2. **Domain**: 
    - Your subdomain (e.g., `johnappleseed` if your URL is `johnappleseed.zo.computer`)
 
@@ -85,9 +79,11 @@ The main menu gives you quick access to all features:
 ```
   [1] AI Models         - Start a conversation
   [2] Chats             - History and logs
-  [3] Events            - View and schedule tasks
-  [4] Services          - Manage services
-  [5] Billing           - Credits and usage
-  [6] System            - View machine stats
-  [7] Exit              - Close application
+  [3] Files             - Workspace browser
+  [4] Events            - View and schedule tasks
+  [5] Services          - Manage services
+  [6] Billing           - Credits and usage
+  [7] System            - View machine stats
+  [8] Mount             - Mount workspace as drive
+  [9] Exit              - Close application
 ```
