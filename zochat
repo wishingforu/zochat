@@ -783,6 +783,9 @@ BANNER
         model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget}}"
         name="Claude Sonnet 4 ($budget_name)"
         ;;
+    12)
+        continue 2
+        ;;
     *) echo "Invalid choice"; exit 1 ;;
 esac
 clear
