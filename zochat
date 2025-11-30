@@ -3,6 +3,13 @@ export LESSCHARSET=utf-8
 CONFIG_DIR="$HOME/.config/zo-chat"
 CONFIG_FILE="$CONFIG_DIR/config"
 STATS_FILE="$CONFIG_DIR/stats.json"
+
+# Detect Windows
+IS_WINDOWS=false
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    IS_WINDOWS=true
+fi
+
 # Colors
 CYAN='\033[36m'
 GREEN='\033[32m'
@@ -13,6 +20,38 @@ RED='\033[31m'
 BOLD='\033[1m'
 DIM='\033[2m'
 RESET='\033[0m'
+
+# Auto-install dependencies on Windows
+auto_install_deps() {
+    if [ "$IS_WINDOWS" = true ]; then
+        # Check for jq
+        if ! command -v jq &> /dev/null; then
+            echo -e "${YELLOW}Installing jq for Windows...${RESET}"
+            
+            # Download jq for Windows
+            JQ_DIR="$HOME/.local/bin"
+            mkdir -p "$JQ_DIR"
+            
+            if command -v curl &> /dev/null; then
+                curl -sL "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe" -o "$JQ_DIR/jq.exe"
+                export PATH="$JQ_DIR:$PATH"
+                echo -e "${GREEN}✓ jq installed${RESET}"
+            else
+                echo -e "${RED}Warning: curl not found, jq auto-install failed${RESET}"
+                echo -e "${YELLOW}Please install jq manually or ignore if not using advanced features${RESET}"
+            fi
+        fi
+        
+        # Check for Python (for mount feature)
+        if ! command -v py &> /dev/null && ! command -v python3 &> /dev/null; then
+            echo -e "${YELLOW}Note: Python not found. Mount feature will be disabled.${RESET}"
+            echo -e "${DIM}Install from: https://www.python.org/downloads/${RESET}"
+        fi
+    fi
+}
+
+# Run dependency check on first load
+auto_install_deps
 setup() {
     clear
     echo -e "${CYAN}"
