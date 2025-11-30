@@ -1,4 +1,5 @@
 #!/bin/bash
+export LESSCHARSET=utf-8
 CONFIG_DIR="$HOME/.config/zo-chat"
 CONFIG_FILE="$CONFIG_DIR/config"
 STATS_FILE="$CONFIG_DIR/stats.json"
