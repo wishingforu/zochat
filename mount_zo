@@ -113,10 +113,25 @@ mount_filesystem() {
                 return 0
             fi
             
-            # Mount using davfs2 (might need sudo)
-            sudo mount -t davfs http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" 2>/dev/null || {
+            # Configure davfs2 to skip authentication (our server doesn't use HTTP auth)
+            DAVFS_CONF="/tmp/zoMount_davfs.conf"
+            cat > "$DAVFS_CONF" << 'EOF'
+# Temporary davfs2 config for zoMount
+use_locks 0
+ask_auth 0
+secrets /tmp/zoMount_secrets
+EOF
+            
+            # Create empty secrets file
+            touch /tmp/zoMount_secrets
+            chmod 600 /tmp/zoMount_secrets
+            
+            # Mount using davfs2 with custom config
+            echo -e "${YELLOW}Mounting (you may need to enter sudo password)...${RESET}"
+            sudo mount -t davfs -o conf="$DAVFS_CONF",uid=$(id -u),gid=$(id -g) \
+                http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" || {
                 echo -e "${RED}✗ Mount failed${RESET}"
-                echo "Try manually: sudo mount -t davfs http://localhost:$ZO_MOUNT_PORT $ZO_MOUNT_POINT"
+                echo "Check server logs: tail /tmp/zoMount.log"
                 exit 1
             }
             ;;
