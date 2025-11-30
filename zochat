@@ -133,7 +133,7 @@ while true; do
 BANNER
     echo -e "${RESET}"
     echo ""
-    echo -e "${BOLD}${CYAN}   The Ultimate CLI Tool for Zo Computer${RESET}"
+    echo -e "${BOLD}${CYAN}       The Ultimate CLI Tool for Zo Computer${RESET}"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo -e "  ${DIM}Connected as: ${BOLD}${GREEN}${DOMAIN}${RESET}"
