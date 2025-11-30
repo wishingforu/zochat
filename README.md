@@ -7,7 +7,7 @@
    |\________\ \_______\       \ \_______\ \__\ \__\ \__\ \__\   \ \__\
     \|_______|\|_______|        \|_______|\|__|\|__|\|__|\|__|    \|__| 			v1. 
 ```
-> A cooler way to use [https://zo.computer](https://zo.computer) through the terminal.
+> A [https://zo.computer](https://zo.computer) CLI
 ## Installation
 ### Quick Install (Recommended)
 ```bash
