@@ -219,7 +219,7 @@ BANNER
                         echo ""
                         echo ""
                         echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R -F -X
+                        ) | less -R -X
                         ;;
                     2)
                         # Schedule new event
@@ -362,7 +362,7 @@ BANNER
                         fi
                         echo ""
                         echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R -F -X
+                        ) | less -R -X
                         ;;
                     2)
                         # Create service
@@ -542,7 +542,7 @@ BANNER
             fi
             echo ""
             echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-            ) | less -R -F -X
+            ) | less -R -X
             ;;
         5)
             echo ""
