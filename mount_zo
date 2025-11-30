@@ -128,12 +128,29 @@ EOF
             
             # Mount using davfs2 with custom config
             echo -e "${YELLOW}Mounting (you may need to enter sudo password)...${RESET}"
-            sudo mount -t davfs -o conf="$DAVFS_CONF",uid=$(id -u),gid=$(id -g) \
-                http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" || {
-                echo -e "${RED}✗ Mount failed${RESET}"
-                echo "Check server logs: tail /tmp/zoMount.log"
-                exit 1
+            
+            # Set trap to cleanup on failure
+            cleanup_on_fail() {
+                echo -e "${RED}Mount failed, cleaning up...${RESET}"
+                # Kill the server we just started
+                if [ -f /tmp/zoMount.pid ]; then
+                    PID=$(cat /tmp/zoMount.pid)
+                    kill $PID 2>/dev/null || true
+                    rm /tmp/zoMount.pid 2>/dev/null || true
+                fi
             }
+            
+            if ! sudo mount -t davfs -o conf="$DAVFS_CONF",uid=$(id -u),gid=$(id -g) \
+                http://localhost:$ZO_MOUNT_PORT "$ZO_MOUNT_POINT" 2>&1; then
+                cleanup_on_fail
+                echo -e "${RED}✗ Mount failed${RESET}"
+                echo ""
+                echo -e "${YELLOW}Troubleshooting:${RESET}"
+                echo "1. Check server logs: tail /tmp/zoMount.log"
+                echo "2. Make sure server is running: curl http://localhost:9999/"
+                echo "3. Try restarting: ./mount_zo unmount && ./mount_zo mount"
+                exit 1
+            fi
             ;;
             
         windows)

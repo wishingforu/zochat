@@ -446,6 +446,15 @@ def main():
         "host": "0.0.0.0",
         "port": 9999,
         "verbose": 1,
+        # Disable HTTP authentication - we handle auth via cookies internally
+        "http_authenticator": {
+            "domain_controller": None
+        },
+        "simple_dc": {
+            "user_mapping": {
+                "*": True  # Allow anonymous access
+            }
+        }
     }
     
     # Start server
