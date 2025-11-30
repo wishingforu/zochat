@@ -142,6 +142,7 @@ BANNER
     read main_choice
     # Strip whitespace/newlines
     main_choice=$(echo "$main_choice" | tr -d '[:space:]')
+    echo "Debug: Received '$main_choice'"
 
     case $main_choice in
         1)
