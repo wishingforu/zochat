@@ -84,6 +84,120 @@ class ZoFile(DAVNonCollection):
     
     def support_ranges(self):
         return False
+    
+    def begin_write(self, content_type=None):
+        """Begin writing content to file"""
+        return ZoFileWriter(self)
+    
+    def delete(self):
+        """Delete this file"""
+        provider = self.provider
+        domain = provider.domain
+        access_token = provider.access_token
+        
+        # Get path parts for API call
+        file_path = self.path.lstrip('/')
+        path_parts = file_path.split('/') if file_path else []
+        
+        try:
+            # Move to trash
+            response = requests.post(
+                f"https://{domain}/api/move-to-trash",
+                headers={
+                    'Cookie': f'access_token={access_token}',
+                    'Origin': f'https://{domain}',
+                    'Content-Type': 'application/json'
+                },
+                json=path_parts,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                # Clear cache for parent directory
+                parent_path = os.path.dirname(self.path)
+                if parent_path in provider.cache:
+                    del provider.cache[parent_path]
+                return True
+            else:
+                print(f"Delete failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"Error deleting file: {e}")
+            return False
+
+
+class ZoFileWriter:
+    """Handles writing content to a Zo Computer file"""
+    
+    def __init__(self, file_resource):
+        self.file_resource = file_resource
+        self.buffer = bytearray()
+    
+    def write(self, data):
+        """Write data to buffer"""
+        self.buffer.extend(data)
+    
+    def close(self):
+        """Upload buffered content to Zo Computer"""
+        provider = self.file_resource.provider
+        domain = provider.domain
+        access_token = provider.access_token
+        file_path = self.file_resource.path.lstrip('/')
+        
+        # Parse path into parent parts and filename
+        path_parts = file_path.split('/') if file_path else []
+        filename = path_parts[-1] if path_parts else "untitled"
+        parent_parts = path_parts[:-1] if len(path_parts) > 1 else []
+        
+        try:
+            # Step 1: Create file entry
+            create_response = requests.post(
+                f"https://{domain}/api/create-file",
+                headers={
+                    'Cookie': f'access_token={access_token}',
+                    'Origin': f'https://{domain}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'parentPathParts': parent_parts,
+                    'name': filename,
+                    'type': 'file',
+                    'root': 'w'
+                },
+                timeout=10
+            )
+            
+            if create_response.status_code != 200:
+                print(f"Create file failed: {create_response.status_code}")
+                return
+            
+            # Step 2: Upload file content
+            files = {
+                'file': (filename, bytes(self.buffer), 'application/octet-stream')
+            }
+            
+            upload_response = requests.post(
+                f"https://{domain}/api/file-uploads/single",
+                headers={
+                    'Cookie': f'access_token={access_token}',
+                    'Origin': f'https://{domain}'
+                },
+                files=files,
+                timeout=30
+            )
+            
+            if upload_response.status_code == 200:
+                # Clear cache for parent directory to refresh listing
+                parent_path = os.path.dirname(self.file_resource.path) or '/'
+                if parent_path in provider.cache:
+                    del provider.cache[parent_path]
+                print(f"Successfully uploaded: {filename}")
+            else:
+                print(f"Upload failed: {upload_response.status_code}")
+                
+        except Exception as e:
+            print(f"Error writing file: {e}")
 
 
 class ZoDirectory(DAVCollection):
@@ -116,6 +230,74 @@ class ZoDirectory(DAVCollection):
                     return ZoFile(child_path, self.environ, child)
         
         return None
+    
+    def create_member(self, name, is_collection=False):
+        """Create a new file or directory"""
+        if is_collection:
+            # Create directory
+            return self.create_collection(name)
+        else:
+            # Create file - return a new ZoFile instance that doesn't exist yet
+            child_path = os.path.join(self.path, name).replace('\\', '/')
+            file_info = {
+                "name": name,
+                "type": "file",
+                "size": 0
+            }
+            return ZoFile(child_path, self.environ, file_info)
+    
+    def create_collection(self, name):
+        """Create a new directory"""
+        provider = self.provider
+        domain = provider.domain
+        access_token = provider.access_token
+        
+        # Build path parts
+        dir_path = os.path.join(self.path, name).replace('\\', '/').lstrip('/')
+        path_parts = dir_path.split('/') if dir_path else []
+        parent_parts = path_parts[:-1] if len(path_parts) > 1 else []
+        
+        try:
+            response = requests.post(
+                f"https://{domain}/api/create-file",
+                headers={
+                    'Cookie': f'access_token={access_token}',
+                    'Origin': f'https://{domain}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'parentPathParts': parent_parts,
+                    'name': name,
+                    'type': 'directory',
+                    'root': 'w'
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                # Clear cache
+                if self.path in provider.cache:
+                    del provider.cache[self.path]
+                
+                # Return new directory resource
+                child_path = os.path.join(self.path, name).replace('\\', '/')
+                dir_info = {"name": name, "type": "directory", "children": []}
+                return ZoDirectory(child_path, self.environ, dir_info)
+            else:
+                print(f"Create directory failed: {response.status_code}")
+                raise DAVError(HTTP_FORBIDDEN)
+                
+        except Exception as e:
+            print(f"Error creating directory: {e}")
+            raise DAVError(HTTP_FORBIDDEN)
+    
+    def delete_member(self, name):
+        """Delete a member (file or directory)"""
+        # Get the member first
+        member = self.get_member(name)
+        if member:
+            return member.delete()
+        return False
 
 
 class ZoComputerProvider(DAVProvider):
