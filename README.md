@@ -9,9 +9,17 @@
                                                                     v1.0
 ```
 
-A powerful CLI for [Zo Computer](https://zo.computer) - Chat, Billing, Events, and Services.
+A powerful CLI for [Zo Computer](https://zo.computer) 
+
+### Requirements
+- **Bash** 4.0+
+- **curl** (for API requests)
+- **jq** (for JSON parsing & charts)
+- **Unix-like OS** (Linux, macOS, WSL)
 
 ## Installation
+
+
 
 ### Option 1: Quick Install (Git)
 ```bash
@@ -44,11 +52,7 @@ mv zochat ~/.local/bin/
 # Ensure ~/.local/bin is in your PATH
 ```
 
-## Requirements
-- **Bash** 4.0+
-- **curl** (for API requests)
-- **jq** (for JSON parsing & charts)
-- **Unix-like OS** (Linux, macOS, WSL)
+
 
 ## Features
 - ** All ZO AI services**: GPT-5.1, Claude 3.5, Grok, Gemini, and more
@@ -64,17 +68,24 @@ When you first run `./zochat`, you'll be prompted for:
    - Press `F12` on zo.computer
    - Go to **Application** > **Cookies** > **.zo.computer**
    - Copy the value of `access_token`
+------------------------------or-----------------------------------
+   - Go to your Zo Computer
+   - Go to **Settings** > **Developer** > **Edit ZO_CLIENT_IDENTITY_TOKEN**
+   - Copy and Paste the `access_token/ ZO_CLIENT_IDENTITY_TOKEN`
+
+   
 2. **Domain**: 
-   - Your subdomain (e.g., `daniel` if your URL is `daniel.zo.computer`)
+   - Your subdomain (e.g., `johnappleseed` if your URL is `johnappleseed.zo.computer`)
 
 ## Usage
 The main menu gives you quick access to all features:
 
 ```
-  [1] Chat with AI      - Start a conversation
-  [2] View Events       - List scheduled tasks
-  [3] Schedule Event    - Create new task
-  [4] View Billing      - Credits and usage
-  [5] User Services     - Manage services
-  [6] Exit              - Close application
+  [1] AI Models         - Start a conversation
+  [2] Chats             - History and logs
+  [3] Events            - View and schedule tasks
+  [4] Services          - Manage services
+  [5] Billing           - Credits and usage
+  [6] System            - View machine stats
+  [7] Exit              - Close application
 ```
