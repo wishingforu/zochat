@@ -67,7 +67,7 @@ class ZoFile(DAVNonCollection):
                 response = requests.get(
                     endpoint,
                     headers={
-                        'Cookie': f'access_token={access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
                         'Origin': f'https://{domain}'
                     },
                     timeout=10
@@ -104,7 +104,7 @@ class ZoFile(DAVNonCollection):
             response = requests.post(
                 f"https://{domain}/api/move-to-trash",
                 headers={
-                    'Cookie': f'access_token={access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -155,7 +155,7 @@ class ZoFileWriter:
             create_response = requests.post(
                 f"https://{domain}/api/create-file",
                 headers={
-                    'Cookie': f'access_token={access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -180,7 +180,7 @@ class ZoFileWriter:
             upload_response = requests.post(
                 f"https://{domain}/api/file-uploads/single",
                 headers={
-                    'Cookie': f'access_token={access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
                     'Origin': f'https://{domain}'
                 },
                 files=files,
@@ -261,7 +261,7 @@ class ZoDirectory(DAVCollection):
             response = requests.post(
                 f"https://{domain}/api/create-file",
                 headers={
-                    'Cookie': f'access_token={access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -328,7 +328,7 @@ class ZoComputerProvider(DAVProvider):
             response = requests.get(
                 url,
                 headers={
-                    'Cookie': f'access_token={self.access_token}',
+                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={self.access_token}',
                     'Origin': f'https://{self.domain}'
                 },
                 timeout=10
