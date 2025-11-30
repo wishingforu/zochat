@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-zoMount - WebDAV server for mounting Zo Computer workspace
+zoMount - WebDAV Server for Zo Computer with HTTPS support
 """
 
 import os
 import sys
 import json
 import requests
-from datetime import datetime
+import ssl
+from datetime import datetime, timedelta
 from wsgidav.wsgidav_app import WsgiDAVApp
 from wsgidav.dav_provider import DAVProvider, DAVCollection, DAVNonCollection
 from wsgidav.dav_error import DAVError, HTTP_NOT_FOUND, HTTP_FORBIDDEN
@@ -67,7 +68,7 @@ class ZoFile(DAVNonCollection):
                 response = requests.get(
                     endpoint,
                     headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
+                    'Cookie': f'access_token={access_token}',
                         'Origin': f'https://{domain}'
                     },
                     timeout=10
@@ -104,7 +105,7 @@ class ZoFile(DAVNonCollection):
             response = requests.post(
                 f"https://{domain}/api/move-to-trash",
                 headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
+                    'Cookie': f'access_token={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -155,7 +156,7 @@ class ZoFileWriter:
             create_response = requests.post(
                 f"https://{domain}/api/create-file",
                 headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
+                    'Cookie': f'access_token={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -180,7 +181,7 @@ class ZoFileWriter:
             upload_response = requests.post(
                 f"https://{domain}/api/file-uploads/single",
                 headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
+                    'Cookie': f'access_token={access_token}',
                     'Origin': f'https://{domain}'
                 },
                 files=files,
@@ -261,7 +262,7 @@ class ZoDirectory(DAVCollection):
             response = requests.post(
                 f"https://{domain}/api/create-file",
                 headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={access_token}',
+                    'Cookie': f'access_token={access_token}',
                     'Origin': f'https://{domain}',
                     'Content-Type': 'application/json'
                 },
@@ -328,7 +329,7 @@ class ZoComputerProvider(DAVProvider):
             response = requests.get(
                 url,
                 headers={
-                    'Cookie': f'ZO_CLIENT_IDENTITY_TOKEN={self.access_token}',
+                    'Cookie': f'access_token={self.access_token}',
                     'Origin': f'https://{self.domain}'
                 },
                 timeout=10
@@ -348,6 +349,10 @@ class ZoComputerProvider(DAVProvider):
     
     def get_resource_inst(self, path, environ):
         """Return a DAVResource instance for the given path"""
+        
+        # Handle None path
+        if path is None:
+            return None
         
         # Normalize path
         path = path.rstrip('/')
@@ -384,6 +389,67 @@ class ZoComputerProvider(DAVProvider):
                     return ZoFile(path, environ, child)
         
         return None
+
+
+def generate_ssl_cert(cert_file, key_file):
+    """Generate self-signed SSL certificate for HTTPS WebDAV"""
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
+        import ipaddress
+        
+        # Generate private key
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        
+        # Create certificate
+        subject = issuer = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Zo Computer"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+        ])
+        
+        cert = x509.CertificateBuilder().subject_name(
+            subject
+        ).issuer_name(
+            issuer
+        ).public_key(
+            private_key.public_key()
+        ).serial_number(
+            x509.random_serial_number()
+        ).not_valid_before(
+            datetime.now()
+        ).not_valid_after(
+            datetime.now() + timedelta(days=365)
+        ).add_extension(
+            x509.SubjectAlternativeName([
+                x509.DNSName("localhost"),
+                x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+            ]),
+            critical=False,
+        ).sign(private_key, hashes.SHA256())
+        
+        # Write files
+        with open(cert_file, "wb") as f:
+            f.write(cert.public_bytes(Encoding.PEM))
+        
+        with open(key_file, "wb") as f:
+            f.write(private_key.private_bytes(
+                encoding=Encoding.PEM,
+                format=PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=NoEncryption()
+            ))
+        
+        return True
+    except ImportError:
+        print("[ERROR] cryptography library not installed")
+        print("Install with: pip install cryptography")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Failed to generate certificate: {e}")
+        return False
 
 
 def load_config():
@@ -442,56 +508,47 @@ def main():
         print("Error: Could not find an available port")
         sys.exit(1)
     
-    print(f"Starting WebDAV server for {domain}...")
-    print(f"Server will run on http://localhost:{port}")
-    print()
-    print("Mount instructions:")
-    print(f"  macOS:   mkdir ~/zoMount && mount_webdav http://localhost:{port} ~/zoMount")
-    print(f"  Linux:   mkdir ~/zoMount && mount -t davfs http://localhost:{port} ~/zoMount")
-    print(f"  Windows: net use Z: http://localhost:{port}")
-    print()
-    print("Press Ctrl+C to stop the server")
-    print()
-    
     # Create provider
     provider = ZoComputerProvider(domain, access_token)
     
     # Configure WebDAV app
+    # Simple HTTP, No Auth, Localhost only
     config = {
         "provider_mapping": {
             "/": provider
         },
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": port,
-        "verbose": 1,
-        # Disable HTTP authentication - we handle auth via cookies internally
         "http_authenticator": {
             "domain_controller": None
         },
         "simple_dc": {
             "user_mapping": {
-                "*": True  # Allow anonymous access
+                "*": True
             }
-        }
+        },
+        "verbose": 1,
     }
     
-    # Start server
     app = WsgiDAVApp(config)
     
+    # Simple HTTP Server (No SSL, No Auth)
+    # Security: Binds to 127.0.0.1 so only local machine can access
+    server_args = {
+        "bind_addr": ("127.0.0.1", port),
+        "wsgi_app": app,
+    }
+    
+    from cheroot import wsgi
+    server = wsgi.Server(**server_args)
+    
+    print(f"\nServer running on http://127.0.0.1:{port}")
+    print(f"Mount command: net use Z: http://127.0.0.1:{port}")
+    
     try:
-        from cheroot import wsgi
-        server = wsgi.Server(
-            bind_addr=("0.0.0.0", port),
-            wsgi_app=app
-        )
         server.start()
     except KeyboardInterrupt:
-        print("\nShutting down server...")
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        print("\nTry installing dependencies:")
-        print("  pip install wsgidav cheroot requests")
-        sys.exit(1)
+        server.stop()
 
 
 if __name__ == "__main__":

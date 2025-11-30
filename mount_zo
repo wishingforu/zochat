@@ -14,8 +14,21 @@ BOLD='\033[1m'
 ZO_MOUNT_PORT=0
 ZO_MOUNT_POINT="$HOME/zoMount"
 SERVER_SCRIPT="$(dirname "$0")/zoMount"
-LOG_FILE="$HOME/.zoMount.log"
-PID_FILE="$HOME/.zoMount.pid"
+
+# Use Windows-compatible temp directory if on Windows
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    # Windows - use TEMP environment variable
+    if [ -n "$TEMP" ]; then
+        LOG_FILE="$TEMP/zoMount.log"
+        PID_FILE="$TEMP/zoMount.pid"
+    else
+        LOG_FILE="/tmp/zoMount.log"
+        PID_FILE="/tmp/zoMount.pid"
+    fi
+else
+    LOG_FILE="/tmp/zoMount.log"
+    PID_FILE="/tmp/zoMount.pid"
+fi
 
 # Detect OS
 detect_os() {
@@ -60,9 +73,26 @@ check_zo_computer_environment() {
     return 1
 }
 
+
 # Start WebDAV server
 start_server() {
     echo -e "${CYAN}Starting WebDAV server...${RESET}"
+    
+    # Check if server already running
+    if ps aux | grep "[p]ython.*zoMount" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Server already running${RESET}"
+        # Extract port from existing log
+        if [ -f "$LOG_FILE" ]; then
+            ZO_MOUNT_PORT=$(grep -o "localhost:[0-9]*" "$LOG_FILE" 2>/dev/null | grep -o "[0-9]*" | head -1)
+            if [ -n "$ZO_MOUNT_PORT" ]; then
+                echo -e "${GREEN}✓ Port: $ZO_MOUNT_PORT${RESET}"
+                return 0
+            fi
+        fi
+        # If can't get port from log, assume 9999
+        ZO_MOUNT_PORT=9999
+        return 0
+    fi
     
     # Detect Python command
     PYTHON_CMD=""
@@ -81,7 +111,7 @@ start_server() {
     # Check if dependencies are installed
     if ! $PYTHON_CMD -c "import wsgidav" 2>/dev/null; then
         echo -e "${YELLOW}Installing dependencies...${RESET}"
-        $PYTHON_CMD -m pip install -r "$(dirname "$0")/requirements.txt" || {
+        $PYTHON_CMD -m pip install wsgidav cheroot requests || {
             echo -e "${RED}Failed to install dependencies${RESET}"
             echo "Try manually: $PYTHON_CMD -m pip install wsgidav cheroot requests"
             exit 1
@@ -90,35 +120,53 @@ start_server() {
     
     # Start server in background
     echo -e "${YELLOW}Starting Python server...${RESET}"
-    # Clean up old log
-    rm -f "$LOG_FILE"
     
-    $PYTHON_CMD "$SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
+    # Clean up old logs
+    rm -f "$LOG_FILE" "$PID_FILE"
+    
+    # Start server with output redirection
+    $PYTHON_CMD -u "$SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
     SERVER_PID=$!
     echo $SERVER_PID > "$PID_FILE"
     
-    # Wait for server to be ready and extract port
-    echo -e "${YELLOW}Waiting for server to start...${RESET}"
-    for i in {1..15}; do
+    echo -e "${DIM}PID: $SERVER_PID${RESET}"
+    echo -e "${DIM}Log: $LOG_FILE${RESET}"
+    
+    # Wait for server to start
+    echo -e "${YELLOW}Waiting for server...${RESET}"
+    
+    for i in {1..10}; do
+        sleep 1
+        
+        # Check if process still alive
+        if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo -e "${RED}✗ Server process died${RESET}"
+            if [ -f "$LOG_FILE" ]; then
+                echo -e "${YELLOW}Last 20 lines of log:${RESET}"
+                tail -20 "$LOG_FILE"
+            fi
+            exit 1
+        fi
+        
+        # Try to extract port from log
         if [ -f "$LOG_FILE" ]; then
-            # Extract port from log (compatible with standard grep)
-            PORT=$(grep "Server will run on" "$LOG_FILE" | grep -o "[0-9]*$" | head -1)
+            PORT=$(grep -o "localhost:[0-9]*" "$LOG_FILE" 2>/dev/null | grep -o "[0-9]*" | head -1)
             if [ -n "$PORT" ]; then
                 ZO_MOUNT_PORT=$PORT
-                if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/ 2>/dev/null | grep -q "200\|301\|302\|401"; then
-                    echo -e "${GREEN}✓ Server is running on port $PORT (PID: $SERVER_PID)${RESET}"
+                # Verify server responds
+                if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" 2>/dev/null | grep -q "200\|301\|302\|401"; then
+                    echo -e "${GREEN}✓ Server running on port $PORT${RESET}"
                     return 0
                 fi
             fi
         fi
-        sleep 1
     done
     
-    # Fallback check for port 9999 if extraction failed but server might be running
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:9999/ 2>/dev/null | grep -q "200\|301\|302\|401"; then
-         ZO_MOUNT_PORT=9999
-         echo -e "${GREEN}✓ Server is running on default port 9999${RESET}"
-         return 0
+    # Final fallback - check if server is on port 9999
+    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9999/" 2>/dev/null | grep -q "200\|301\|302\|401"; then
+        ZO_MOUNT_PORT=9999
+        echo -e "${GREEN}✓ Server running on port 9999${RESET}"
+        return 0
     fi
     
     echo -e "${RED}✗ Server failed to start${RESET}"
@@ -234,8 +282,17 @@ EOF
             
             echo -e "${CYAN}Mounting to Z: drive...${RESET}"
             
+            # Validate port before attempting mount
+            if [ -z "$ZO_MOUNT_PORT" ] || [ "$ZO_MOUNT_PORT" -eq 0 ] 2>/dev/null; then
+                echo -e "${RED}✗ Invalid port detected: '$ZO_MOUNT_PORT'${RESET}"
+                echo -e "${YELLOW}Server may have started but port detection failed.${RESET}"
+                echo "Check logs: cat \"$LOG_FILE\""
+                exit 1
+            fi
+            
             # Use 127.0.0.1 instead of localhost (more reliable on Windows)
             MOUNT_URL="http://127.0.0.1:$ZO_MOUNT_PORT"
+            echo -e "${DIM}Mount URL: $MOUNT_URL${RESET}"
             
             # Try to mount
             # Note: We use empty username/password to prevent prompt

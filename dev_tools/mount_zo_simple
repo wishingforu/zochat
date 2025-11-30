@@ -1,0 +1,179 @@
+#!/bin/bash
+# Simple mont wrapper for Windows - just start server and mount
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+# Configuration
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    LOG_FILE="$TEMP/zoMount_out.log"
+    ERR_FILE="$TEMP/zoMount_err.log"
+else
+    LOG_FILE="/tmp/zoMount.log"
+    ERR_FILE="/tmp/zoMount_err.log"
+fi
+
+# Detect Python
+if command -v py &> /dev/null; then
+    PYTHON="py"
+elif command -v python3 &> /dev/null; then
+    PYTHON="python3"
+elif command -v python &> /dev/null; then
+    PYTHON="python"
+else
+    echo -e "${RED}Error: Python not found${RESET}"
+    exit 1
+fi
+
+# Check if server is already running
+check_server() {
+    if ps aux | grep "[p]ython.*zoMount" > /dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+fi
+
+# Get port from log
+get_port() {
+    if [ -f "$LOG_FILE" ]; then
+        grep -o "localhost:[0-9]*" "$LOG_FILE" 2>/dev/null | grep -o "[0-9]*" | head -1
+    fi
+}
+
+case "$1" in
+    mount)
+        echo -e "${CYAN}Starting WebDAV mount...${RESET}"
+        echo  ""
+        
+        # Check if already running
+        if check_server; then
+            PORT=$(get_port)
+            echo -e "${GREEN}✓ Server already running on port $PORT${RESET}"
+        else
+            # Start server
+            echo -e "${YELLOW}Starting server...${RESET}"
+            $PYTHON -u "$(dirname "$0")/zoMount" > "$LOG_FILE" 2> "$ERR_FILE" &
+            
+            # Wait for server to start
+            for i in {1..10}; do
+                sleep 1
+                if check_server; then
+                    PORT=$(get_port)
+                    if [ -n "$PORT" ]; then
+                        echo -e "${GREEN}✓ Server started on port $PORT${RESET}"
+                        break
+                    fi
+                fi
+            done
+            
+            if [ -z "$PORT" ]; then
+                echo -e "${RED}✗ Failed to start server${RESET}"
+                echo "Check logs:"
+                echo "  Output: cat $LOG_FILE"
+                echo "  Errors: cat $ERR_FILE"
+                exit 1
+            fi
+        fi
+        
+        # Mount on Windows
+        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+            echo ""
+            echo -e "${CYAN}Mounting Z: drive...${RESET}"
+            
+            # Unmount if already mounted
+            net use Z: /delete /y > /dev/null 2>&1
+            
+            # Mount
+            if net use Z: "http://127.0.0.1:$PORT" /user:dummy dummy > /dev/null 2>&1; then
+                echo -e "${GREEN}✓ Z: drive mounted successfully!${RESET}"
+                echo ""
+                echo -e "${CYAN}Testing access...${RESET}"
+                
+                # Test file access
+                if ls Z: > /dev/null 2>&1; then
+                    COUNT=$(ls -1 Z: 2>/dev/null | wc -l)
+                    echo -e "${GREEN}✓ Files accessible ($COUNT items found)${RESET}"
+                    echo ""
+                    echo -e "${GREEN}Success! Your workspace is mounted at Z:${RESET}"
+                else
+                    echo -e "${YELLOW}⚠ Drive mounted but files not immediately accessible${RESET}"
+                    echo "Try accessing Z: in Windows Explorer"
+                fi
+            else
+                echo -e "${RED}✗ Mount failed${RESET}"
+                echo ""
+                echo -e "${YELLOW}Troubleshooting:${RESET}"
+                echo "1. Make sure WebClient service is running"
+                echo "2. Check BasicAuthLevel registry setting (should be 2)"
+                echo "3. See: FIX_WINDOWS_MOUNT.md"
+                exit 1
+            fi
+        else
+            # Unix/macOS
+            mkdir -p ~/zoMount
+            echo "Mount commands for Unix/macOS not fully implemented yet"
+            echo "Port: $PORT"
+        fi
+        ;;
+        
+    unmount)
+        echo -e "${CYAN}Unmounting...${RESET}"
+        
+        # Unmount Windows drive
+        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+            net use Z: /delete /y > /dev/null 2>&1
+            echo -e "${GREEN}✓ Drive unmounted${RESET}"
+        fi
+        
+        # Stop server
+        if check_server; then
+            echo -e "${YELLOW}Stopping server...${RESET}"
+            pkill -f "python.*zoMount" 2>/dev/null || ps aux | grep "[p]ython.*zoMount" | awk '{print $1}' | xargs kill 2>/dev/null
+            sleep 1
+            
+            if check_server; then
+                echo -e "${RED}✗ Server still running${RESET}"
+            else
+                echo -e "${GREEN}✓ Server stopped${RESET}"
+            fi
+        else
+            echo -e "${YELLOW}Server not running${RESET}"
+        fi
+        ;;
+        
+    status)
+        echo -e "${CYAN}Mount Status:${RESET}"
+        echo ""
+        
+        # Check server
+        if check_server; then
+            PID=$(ps aux | grep "[p]ython.*zoMount" | awk '{print $1}' | head -1)
+            PORT=$(get_port)
+            echo -e "${GREEN}● Server: RUNNING${RESET}"
+            echo "  PID:  $PID"
+            echo "  Port: $PORT"
+        else
+            echo -e "${RED}● Server: STOPPED${RESET}"
+        fi
+        
+        echo ""
+        
+        # Check mount
+        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+            if net use 2>/dev/null | grep -i "Z:" > /dev/null; then
+                echo -e "${GREEN}● Mount: Z: MOUNTED${RESET}"
+            else
+                echo -e "${YELLOW}● Mount: NOT MOUNTED${RESET}"
+            fi
+        fi
+        ;;
+        
+    *)
+        echo "Usage: $0 {mount|unmount|status}"
+        exit 1
+        ;;
+esac

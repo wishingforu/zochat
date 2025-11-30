@@ -869,44 +869,329 @@ BANNER
             echo -e "${RESET}"
             echo ""
             echo -e "${BOLD}           Mount Workspace${RESET}"
-            echo ""
-            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-            echo ""
-            echo -e "This will mount your Zo Computer workspace as a network drive."
-            echo ""
-            echo -e "${YELLOW}Requirements:${RESET}"
-            echo -e "  • Python 3.7+"
-            echo -e "  • pip (Python package manager)"
-            echo ""
-            echo -e "${YELLOW}Mount points:${RESET}"
-            echo -e "  • macOS/Linux: ~/zoMount"
-            echo -e "  • Windows:     Z:"
-            echo ""
-            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-            echo ""
             
-            # Check if mount helper exists
-            if [ ! -f "$(dirname "$0")/mount_zo" ]; then
-                echo -e "${RED}Error: mount_zo script not found${RESET}"
+            if [ "$SERVER_ALREADY_RUNNING" = "true" ]; then
+                mount_confirm="y"
+            else
+                echo -n "Start mounting? [y/N]: "
+                read -n 1 mount_confirm
                 echo ""
-                read -n 1 -s -r -p "Press any key to continue..."
-                continue
             fi
             
-            echo -n "Start mounting? [y/N]: "
-            read -n 1 mount_confirm
-            echo ""
-            
             if [[ "$mount_confirm" =~ ^[Yy]$ ]]; then
-                echo ""
-                echo -e "${CYAN}Starting mount process...${RESET}"
-                echo ""
-                
-                # Run mount script
-                bash "$(dirname "$0")/mount_zo" mount
-                
-                echo ""
-                read -n 1 -s -r -p "Press any key to continue..."
+                # Mount Management Loop
+                while true; do
+                    clear
+                    echo -e "${GREEN}"
+                    cat << "BANNER"
+     ███╗   ███╗ ██████╗ ██╗   ██╗███╗   ██╗████████╗
+     ████╗ ████║██╔═══██╗██║   ██║████╗  ██║╚══██╔══╝
+     ██╔████╔██║██║   ██║██║   ██║██╔██╗ ██║   ██║   
+     ██║╚██╔╝██║██║   ██║██║   ██║██║╚██╗██║   ██║   
+     ██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██║ ╚████║   ██║   
+     ╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   
+BANNER
+                    echo -e "${RESET}"
+                    echo ""
+                    echo -e "${BOLD}           Mount Management${RESET}"
+                    echo ""
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo ""
+                    
+                    # Check server status - use PowerShell on Windows for reliability
+                    SERVER_RUNNING=false
+                    SERVER_PORT=""
+                    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]] || [[ -n "$WINDIR" ]]; then
+                        # Windows - use PowerShell
+                        SERVER_PID=$(powershell.exe -NoProfile -Command "Get-Process python,py -ErrorAction SilentlyContinue | Select-Object -First 1 | Select-Object -ExpandProperty Id" 2>/dev/null | tr -d '\r')
+                        if [ -n "$SERVER_PID" ]; then
+                            SERVER_RUNNING=true
+                            # Try to detect port from log
+                            if [ -f "$TEMP/zoMount.log" ]; then
+                                SERVER_PORT=$(grep -o "localhost:[0-9]*" "$TEMP/zoMount.log" 2>/dev/null | grep -o "[0-9]*" | head -1)
+                            fi
+                            if [ -z "$SERVER_PORT" ]; then
+                                SERVER_PORT=9999
+                            fi
+                        fi
+                        
+                        # Check mount status
+                        MOUNT_STATUS=$(net use 2>/dev/null | grep -i "Z:" || echo "")
+                    else
+                        # Unix/macOS
+                        SERVER_PID=$(ps aux | grep "[p]ython.*zoMount" | awk '{print $2}' | head -1)
+                        if [ -n "$SERVER_PID" ]; then
+                            SERVER_RUNNING=true
+                            if [ -f "/tmp/zoMount.log" ]; then
+                                SERVER_PORT=$(grep -o "port [0-9]*" "/tmp/zoMount.log" 2>/dev/null | tail -1 | awk '{print $2}')
+                            fi
+                        fi
+                        
+                        # Check mount status
+                        MOUNT_STATUS=$(mount | grep "zoMount" || echo "")
+                    fi
+                    
+                    # Display Status
+                    echo -e "${BOLD}  Status Overview${RESET}"
+                    echo ""
+                    
+                    if [ "$SERVER_RUNNING" = true ]; then
+                        echo -e "  ${GREEN}●${RESET} WebDAV Server: ${GREEN}RUNNING${RESET} (PID: $SERVER_PID)"
+                        if [ -n "$SERVER_PORT" ]; then
+                            echo -e "     Port: ${CYAN}$SERVER_PORT${RESET}"
+                            echo -e "     URL:  ${CYAN}http://localhost:$SERVER_PORT${RESET}"
+                        fi
+                    else
+                        echo -e "  ${RED}●${RESET} WebDAV Server: ${RED}STOPPED${RESET}"
+                    fi
+                    
+                    echo ""
+                    
+                    if [ -n "$MOUNT_STATUS" ]; then
+                        echo -e "  ${GREEN}●${RESET} Mount Status:  ${GREEN}MOUNTED${RESET}"
+                        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+                            echo -e "     Drive: ${CYAN}Z:${RESET}"
+                        else
+                            echo -e "     Path:  ${CYAN}~/zoMount${RESET}"
+                        fi
+                    else
+                        echo -e "  ${YELLOW}●${RESET} Mount Status:  ${YELLOW}NOT MOUNTED${RESET}"
+                    fi
+                    
+                    echo ""
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo ""
+                    echo -e "  ${CYAN}[1]${RESET} ${BOLD}Start Server & Mount${RESET}"
+                    echo -e "  ${CYAN}[2]${RESET} ${BOLD}Stop Server & Unmount${RESET}"
+                    echo -e "  ${CYAN}[3]${RESET} ${BOLD}View Server Logs${RESET}"
+                    echo -e "  ${CYAN}[4]${RESET} ${BOLD}Test Connection${RESET}"
+                    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Set Drive Label${RESET}"
+                    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Back to Main Menu${RESET}"
+                    echo ""
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo ""
+                    echo -n "Choice: "
+                    read mount_choice
+                    
+                    case $mount_choice in
+                        1)
+                            echo ""
+                            echo -e "${CYAN}Starting WebDAV server and mounting...${RESET}"
+                            # Use PowerShell for Windows - check multiple ways
+                            if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]] || [[ -n "$WINDIR" ]]; then
+                                powershell.exe -NoProfile -Command "
+                                    \$pwd = (Get-Location).Path;
+                                    \$scriptPath = Join-Path \$pwd 'zoMount.py';
+                                    
+                                    Get-Process python,py -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue;
+                                    Start-Sleep -Seconds 1;
+                                    
+                                    Write-Host \"[*] Starting server from: \$scriptPath\";
+                                    Start-Process py -ArgumentList '-u',\"\$scriptPath\" -WorkingDirectory \$pwd -NoNewWindow -RedirectStandardOutput \"\$env:TEMP\\zoMount.log\" -RedirectStandardError \"\$env:TEMP\\zoMount_err.log\" -PassThru | Out-Null;
+                                    Start-Sleep -Seconds 3;
+                                    
+                                    # Extract port from log
+                                    \$logContent = Get-Content \"\$env:TEMP\\zoMount.log\" -ErrorAction SilentlyContinue;
+                                    \$port = (\$logContent | Select-String 'localhost:(\\d+)' | ForEach-Object { \$_.Matches.Groups[1].Value } | Select-Object -First 1);
+                                    if (!\$port) { \$port = 9999 };
+                                    
+                                    Write-Host \"[*] Server on port: \$port\";
+                                    
+                                    # Simple Mount (No Auth, HTTP)
+                                    net use Z: /delete /y 2>\$null | Out-Null;
+                                    \$result = net use Z: \"http://127.0.0.1:\$port\" 2>&1;
+                                    
+                                    if (\$LASTEXITCODE -eq 0) {
+                                        Write-Host '[SUCCESS] Z: mounted!' -ForegroundColor Green;
+                                        
+                                        # Apply drive label if configured
+                                        \$mountConfig = \"\$env:USERPROFILE\\.config\\zo-chat\\mount_config\";
+                                        if (Test-Path \$mountConfig) {
+                                            \$label = (Get-Content \$mountConfig | Select-String 'DRIVE_LABEL=' | ForEach-Object { \$_ -replace 'DRIVE_LABEL=', '' -replace '\"', '' });
+                                            if (\$label) {
+                                                Write-Host \"[*] Applying drive label: \$label\";
+                                                label Z: \"\$label\" 2>\$null | Out-Null;
+                                            }
+                                        }
+                                        
+                                        Write-Host '';
+                                        Get-ChildItem Z:\\ -ErrorAction SilentlyContinue | Select-Object -First 5 | Format-Table Name
+                                    } else {
+                                        Write-Host '[FAILED] Mount error' -ForegroundColor Red;
+                                        Write-Host \$result
+                                    }
+                                "
+                            else
+                                # Unix/Mac - use mount_zo if it exists
+                                if [ -f "$(dirname "$0")/mount_zo" ]; then
+                                    bash "$(dirname "$0")/mount_zo" mount
+                                else
+                                    echo -e "${RED}mount_zo not found for Unix/Mac${RESET}"
+                                fi
+                            fi
+                            
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to continue..."
+                            ;;
+                        2)
+                            echo ""
+                            echo -e "${CYAN}Stopping server and unmounting...${RESET}"
+                            echo ""
+                            
+                            # Use PowerShell for Windows
+                            if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]] || [[ -n "$WINDIR" ]]; then
+                                powershell.exe -NoProfile -Command "
+                                    net use Z: /delete /y 2>\$null | Out-Null;
+                                    Write-Host '[*] Drive unmounted';
+                                    
+                                    # Kill all python processes
+                                    Get-Process python,py -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue;
+                                    Start-Sleep -Seconds 1;
+                                    
+                                    # Verify they're stopped
+                                    \$remaining = Get-Process python,py -ErrorAction SilentlyContinue;
+                                    if (\$remaining) {
+                                        Write-Host '[!] Some processes still running, forcing kill...' -ForegroundColor Yellow;
+                                        taskkill /F /IM python.exe 2>\$null | Out-Null;
+                                        taskkill /F /IM py.exe 2>\$null | Out-Null;
+                                        Write-Host '[*] Server stopped' -ForegroundColor Green
+                                    } else {
+                                        Write-Host '[*] Server stopped' -ForegroundColor Green
+                                    }
+                                "
+                            else
+                                bash "$(dirname "$0")/mount_zo" unmount
+                            fi
+                            
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to continue..."
+                            ;;
+                        3)
+                            echo ""
+                            echo -e "${CYAN}Server Logs (last 50 lines):${RESET}"
+                            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            echo ""
+                            if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+                                if [ -f "$TEMP/zoMount_out.log" ]; then
+                                    tail -n 50 "$TEMP/zoMount_out.log"
+                                else
+                                    echo -e "${YELLOW}No log file found${RESET}"
+                                fi
+                            else
+                                if [ -f "/tmp/zoMount.log" ]; then
+                                    tail -n 50 "/tmp/zoMount.log"
+                                else
+                                    echo -e "${YELLOW}No log file found${RESET}"
+                                fi
+                            fi
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to continue..."
+                            ;;
+                        4)
+                            echo ""
+                            echo -e "${CYAN}Testing connection...${RESET}"
+                            echo ""
+                            if [ "$SERVER_RUNNING" = true ] && [ -n "$SERVER_PORT" ]; then
+                                if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$SERVER_PORT/" 2>/dev/null | grep -q "200\|301\|302\|401"; then
+                                    echo -e "${GREEN}✓ Server is responding${RESET}"
+                                    
+                                    if [ -n "$MOUNT_STATUS" ]; then
+                                        echo -e "${GREEN}✓ Drive is mounted${RESET}"
+                                        
+                                        # Try to list files
+                                        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+                                            if ls Z: >/dev/null 2>&1; then
+                                                FILE_COUNT=$(ls -1 Z: 2>/dev/null | wc -l)
+                                                echo -e "${GREEN}✓ Files accessible ($FILE_COUNT items found)${RESET}"
+                                            else
+                                                echo -e "${YELLOW}⚠ Drive mounted but files not immediately accessible${RESET}"
+                                            fi
+                                        else
+                                            if ls ~/zoMount >/dev/null 2>&1; then
+                                                FILE_COUNT=$(ls -1 ~/zoMount 2>/dev/null | wc -l)
+                                                echo -e "${GREEN}✓ Files accessible ($FILE_COUNT items found)${RESET}"
+                                            else
+                                                echo -e "${YELLOW}⚠ Mount exists but files not accessible${RESET}"
+                                            fi
+                                        fi
+                                    else
+                                        echo -e "${YELLOW}⚠ Server running but not mounted${RESET}"
+                                    fi
+                                else
+                                    echo -e "${RED}✗ Server not responding${RESET}"
+                                fi
+                            else
+                                echo -e "${RED}✗ Server is not running${RESET}"
+                            fi
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to continue..."
+                            ;;
+                        5)
+                            echo ""
+                            echo -e "${CYAN}Set Drive Label${RESET}"
+                            echo ""
+                            echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            echo ""
+                            
+                            # Load current label if exists
+                            MOUNT_CONFIG="$HOME/.config/zo-chat/mount_config"
+                            CURRENT_LABEL="ZoComputer"
+                            if [ -f "$MOUNT_CONFIG" ]; then
+                                SAVED_LABEL=$(grep "DRIVE_LABEL=" "$MOUNT_CONFIG" | cut -d= -f2 | tr -d '"')
+                                if [ -n "$SAVED_LABEL" ]; then
+                                    CURRENT_LABEL="$SAVED_LABEL"
+                                fi
+                            fi
+                            
+                            echo -e "Current label: ${CYAN}$CURRENT_LABEL${RESET}"
+                            echo ""
+                            echo -n "Enter new drive label (or press Enter to keep current): "
+                            read NEW_LABEL
+                            
+                            if [ -n "$NEW_LABEL" ]; then
+                                # Validate label (max 11 chars for Windows)
+                                if [ ${#NEW_LABEL} -gt 11 ]; then
+                                    echo ""
+                                    echo -e "${YELLOW}⚠ Label truncated to 11 characters${RESET}"
+                                    NEW_LABEL="${NEW_LABEL:0:11}"
+                                fi
+                                
+                                # Save to config
+                                mkdir -p "$(dirname "$MOUNT_CONFIG")"
+                                echo "DRIVE_LABEL=\"$NEW_LABEL\"" > "$MOUNT_CONFIG"
+                                
+                                echo ""
+                                echo -e "${GREEN}✓ Drive label saved: $NEW_LABEL${RESET}"
+                                echo ""
+                                echo -e "${CYAN}Label will be applied on next mount${RESET}"
+                                
+                                # Apply now if drive is mounted
+                                if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+                                    if net use 2>/dev/null | grep -i "Z:" > /dev/null; then
+                                        echo ""
+                                        echo -e "${YELLOW}Applying label to mounted drive...${RESET}"
+                                        powershell.exe -NoProfile -Command "label Z: \"$NEW_LABEL\"" 2>/dev/null
+                                        echo -e "${GREEN}✓ Label applied${RESET}"
+                                    fi
+                                fi
+                            else
+                                echo ""
+                                echo -e "${YELLOW}Label unchanged${RESET}"
+                            fi
+                            
+                            echo ""
+                            read -n 1 -s -r -p "Press any key to continue..."
+                            ;;
+                        6)
+                            break
+                            ;;
+                        *)
+                            echo ""
+                            echo -e "${RED}Invalid choice${RESET}"
+                            sleep 1
+                            ;;
+                    esac
+                done
             fi
             ;;
         9)
