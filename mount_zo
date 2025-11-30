@@ -215,10 +215,28 @@ EOF
                 }
             fi
             
+            # Check Registry for BasicAuthLevel (Required for HTTP WebDAV)
+            echo -e "${CYAN}Checking Windows Registry...${RESET}"
+            REG_CHECK=$(reg query "HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters" //v BasicAuthLevel 2>/dev/null | grep "0x2")
+            if [ -z "$REG_CHECK" ]; then
+                echo -e "${YELLOW}⚠ Warning: Windows restricts WebDAV over HTTP by default.${RESET}"
+                echo -e "${YELLOW}You need to set BasicAuthLevel to 2 in the Registry.${RESET}"
+                echo ""
+                echo -e "${BOLD}Run this command in Administrator PowerShell:${RESET}"
+                echo -e "Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\WebClient\Parameters' -Name 'BasicAuthLevel' -Value 2"
+                echo -e "Restart-Service WebClient"
+                echo ""
+                echo -e "Attempting to mount anyway..."
+            fi
+            
             echo -e "${CYAN}Mounting to Z: drive...${RESET}"
             
+            # Use 127.0.0.1 instead of localhost (more reliable on Windows)
+            MOUNT_URL="http://127.0.0.1:$ZO_MOUNT_PORT"
+            
             # Try to mount
-            if net use Z: http://localhost:$ZO_MOUNT_PORT 2>&1 | tee /tmp/mount_output.txt | grep -q "successfully\|command completed"; then
+            # Note: We use empty username/password to prevent prompt
+            if net use Z: "$MOUNT_URL" /user:dummy dummy 2>&1 | tee /tmp/mount_output.txt | grep -q "successfully\|command completed"; then
                 # Verify mount actually worked
                 sleep 2
                 if net use | grep -q "Z:"; then
@@ -244,9 +262,9 @@ EOF
                 cat /tmp/mount_output.txt
                 echo ""
                 echo -e "${YELLOW}Troubleshooting:${RESET}"
-                echo "1. Make sure WebClient service is running: sc query WebClient"
-                echo "2. Try as Administrator"
-                echo "3. Manual mount: net use Z: http://localhost:$ZO_MOUNT_PORT"
+                echo "1. Registry: Ensure BasicAuthLevel is set to 2 (see warning above)"
+                echo "2. Service: Ensure WebClient is running"
+                echo "3. Manual: net use Z: $MOUNT_URL /user:dummy dummy"
                 exit 1
             fi
             ;;
