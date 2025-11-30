@@ -60,10 +60,10 @@ start_server() {
     
     # Detect Python command (Windows uses 'py', Unix uses 'python3')
     PYTHON_CMD=""
-    if command -v python3 &> /dev/null; then
-        PYTHON_CMD="python3"
-    elif command -v py &> /dev/null; then
+    if command -v py &> /dev/null; then
         PYTHON_CMD="py"
+    elif command -v python3 &> /dev/null; then
+        PYTHON_CMD="python3"
     else
         echo -e "${RED}Error: Python 3 is not installed${RESET}"
         echo "Install from: https://www.python.org/downloads/"
