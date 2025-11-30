@@ -218,8 +218,8 @@ BANNER
                         fi
                         echo ""
                         echo ""
-                        echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R
+                        echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
+                        ) | less -R -F -X
                         ;;
                     2)
                         # Schedule new event
@@ -361,8 +361,8 @@ BANNER
                             echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
                         fi
                         echo ""
-                        echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R
+                        echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
+                        ) | less -R -F -X
                         ;;
                     2)
                         # Create service
@@ -541,8 +541,8 @@ BANNER
                 echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
             fi
             echo ""
-            echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
-            ) | less -R
+            echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
+            ) | less -R -F -X
             ;;
         5)
             echo ""
