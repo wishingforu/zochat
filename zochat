@@ -848,7 +848,7 @@ while true; do
             echo -e "  Tokens:   ${GREEN}$SESSION_TOKENS${RESET}"
             echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
             echo ""
-            exit 0
+            exec "$0"
             ;;
         /stats)
             echo ""
