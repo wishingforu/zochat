@@ -141,11 +141,12 @@ BANNER
     echo ""
     echo -e "  ${CYAN}[1]${RESET} ${BOLD}AI Models${RESET}         - Start a conversation"
     echo -e "  ${CYAN}[2]${RESET} ${BOLD}Chats${RESET}             - History and logs"
-    echo -e "  ${CYAN}[3]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
-    echo -e "  ${CYAN}[4]${RESET} ${BOLD}Services${RESET}          - Manage services"
-    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Billing${RESET}           - Credits and usage"
-    echo -e "  ${CYAN}[6]${RESET} ${BOLD}System${RESET}            - View machine stats"
-    echo -e "  ${CYAN}[7]${RESET} ${BOLD}Exit${RESET}              - Close application"
+    echo -e "  ${CYAN}[3]${RESET} ${BOLD}Files${RESET}             - Workspace browser"
+    echo -e "  ${CYAN}[4]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
+    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Services${RESET}          - Manage services"
+    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Billing${RESET}           - Credits and usage"
+    echo -e "  ${CYAN}[7]${RESET} ${BOLD}System${RESET}            - View machine stats"
+    echo -e "  ${CYAN}[8]${RESET} ${BOLD}Exit${RESET}              - Close application"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
@@ -307,6 +308,74 @@ BANNER
             done
             ;;
         3)
+            # File Manager
+            while true; do
+                clear
+                echo -e "${CYAN}"
+                cat << "BANNER"
+     ███████╗██╗██╗     ███████╗███████╗
+     ██╔════╝██║██║     ██╔════╝██╔════╝
+     █████╗  ██║██║     █████╗  ███████╗
+     ██╔══╝  ██║██║     ██╔══╝  ╚════██║
+     ██║     ██║███████╗███████╗███████║
+     ╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝
+BANNER
+                echo -e "${RESET}"
+                echo ""
+                echo -e "${BOLD}           Workspace Browser${RESET}"
+                echo ""
+                echo -e "${YELLOW}Fetching file tree...${RESET}"
+                
+                # Fetch file tree
+                # Using the user's domain for this specific endpoint as discovered
+                files_resp=$(curl -s -X GET "https://$DOMAIN/api/workspace-tree?root=w&showHidden=false" \
+                    -H "cookie: access_token=$ACCESS_TOKEN" \
+                    -H "origin: https://$DOMAIN")
+                
+                if command -v jq > /dev/null 2>&1; then
+                    # Check if response is valid
+                    is_valid=$(echo "$files_resp" | jq 'if .name then "yes" else "no" end' -r 2>/dev/null)
+                    
+                    if [ "$is_valid" != "yes" ]; then
+                        echo -e "${RED}Error: Failed to fetch file tree.${RESET}"
+                        echo -e "${DIM}Response: $files_resp${RESET}"
+                        read -n 1 -s -r -p "Press any key to return..."
+                        break
+                    fi
+                    
+                    # Simple navigation loop
+                    current_path="root"
+                    # We'll use a simplified approach: just list the root for now as full navigation 
+                    # requires complex state management in bash or recursive parsing.
+                    # For V1, we list the top-level items.
+                    
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "${BOLD}Path: /${RESET}"
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    
+                    # List directories first
+                    echo "$files_resp" | jq -r '.children[] | select(.type=="directory") | "\(.name)/"' | while read -r line; do
+                        echo -e "  ${BLUE}📂 $line${RESET}"
+                    done
+                    
+                    # List files
+                    echo "$files_resp" | jq -r '.children[] | select(.type=="file") | "\(.name)"' | while read -r line; do
+                        echo -e "  ${WHITE}📄 $line${RESET}"
+                    done
+                    
+                    echo ""
+                    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "${DIM}(Navigation coming in v2)${RESET}"
+                else
+                    echo -e "${RED}Error: jq not installed.${RESET}"
+                fi
+                
+                echo ""
+                read -n 1 -s -r -p "Press any key to return to main menu..."
+                break
+            done
+            ;;
+        4)
             # Events Management
             while true; do
                 clear
@@ -354,7 +423,7 @@ HORSE
             echo ""
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        4)
+        5)
             # User Services Management
             while true; do
                 clear
@@ -526,7 +595,7 @@ BANNER
                 esac
             done
             ;;
-        5)
+        6)
             # View billing information
             echo ""
             echo -e "${YELLOW}Fetching billing information...${RESET}"
@@ -646,7 +715,7 @@ BANNER
             echo ""
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        6)
+        7)
             # System Stats
             clear
             echo -e "${CYAN}"
@@ -738,7 +807,7 @@ HORSE
             
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
-        7)
+        8)
             echo ""
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""
