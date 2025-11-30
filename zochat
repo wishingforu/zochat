@@ -541,6 +541,21 @@ BANNER
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
         5)
+            echo ""
+            echo -e "${DIM}Goodbye!${RESET}"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice"
+            sleep 1
+            ;;
+    esac
+done
+
+# Model Selection
+clear
+echo -e "${MAGENTA}"
 cat << "BANNER"
     ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
     ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
