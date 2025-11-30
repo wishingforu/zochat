@@ -69,6 +69,7 @@ When you first run `./zochat`, you'll be prompted for:
    - Press `F12` on zo.computer
    - Go to **Application** > **Cookies** > **.zo.computer**
    - Copy the value of `access_token`
+     
 ------------------------------or-----------------------------------
    - Go to your Zo Computer
    - Go to **Settings** > **Developer** > **Edit ZO_CLIENT_IDENTITY_TOKEN**
