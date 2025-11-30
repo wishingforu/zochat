@@ -388,7 +388,8 @@ BANNER
                 echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
             fi
             echo ""
-            read -n 1 -s -r -p "Press any key to continue..."
+            echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
+            ) | less -R
             ;;
         4)
             # View billing information
@@ -480,7 +481,8 @@ BANNER
                             echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
                         fi
                         echo ""
-                        read -n 1 -s -r -p "Press any key to continue..."
+                        echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
+                        ) | less -R
                         ;;
                     2)
                         # Create service
