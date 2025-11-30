@@ -673,6 +673,8 @@ BANNER
         echo ""
         echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
         echo ""
+        echo -e "${DIM}Type '/exit' anytime to return to main menu${RESET}"
+        echo ""
         echo -n "Token Budget: "
         read budget_choice
         
@@ -733,6 +735,8 @@ BANNER
         echo ""
         echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
         echo ""
+        echo -e "${DIM}Type '/exit' anytime to return to main menu${RESET}"
+        echo ""
         echo -n "Token Budget: "
         read budget_choice
         
@@ -769,6 +773,8 @@ BANNER
         echo -e "  ${MAGENTA}[2]${RESET} ${BOLD}30,000 Tokens${RESET}   - Extended thinking capacity"
         echo ""
         echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "${DIM}Type '/exit' anytime to return to main menu${RESET}"
         echo ""
         echo -n "Token Budget: "
         read budget_choice
