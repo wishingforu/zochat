@@ -650,7 +650,7 @@ BANNER
         model="openai:gpt-5-mini-2025-08-07"; name="GPT-5 Mini"; color=$BLUE
         model_settings="{}"
         ;;
-    3) 
+    4) 
         model="anthropic:claude-haiku-4-5-20251001"; name="Claude Haiku"; color=$MAGENTA
         # Claude Haiku Token Budget Selection
         clear
@@ -687,31 +687,31 @@ BANNER
         model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget},\"verbosity\":null}"
         name="Claude Haiku ($budget_name)"
         ;;
-    4) 
+    8) 
         model="grok-4-1-fast-reasoning"; name="Grok 4"; color=$CYAN
         model_settings="{}"
         ;;
-    5) 
+    9) 
         model="google-vertex:gemini-3-pro-preview"; name="Gemini 3 Pro"; color=$YELLOW
         model_settings="{}"
         ;;
-    6) 
+    10) 
         model="openrouter:z-ai/glm-4.6:exacto:floor"; name="GLM-4.6"; color=$CYAN
         model_settings="{}"
         ;;
-    7) 
+    11) 
         model="openrouter:moonshotai/kimi-k2-thinking:floor"; name="Kimi K2"; color=$MAGENTA
         model_settings="{}"
         ;;
-    8) 
+    3) 
         model="openai:gpt-5.1-codex-mini"; name="GPT-5.1 Codex"; color=$GREEN
         model_settings="{}"
         ;;
-    9) 
+    5) 
         model="anthropic:claude-opus-4-5-20251101"; name="Claude Opus 4.5"; color=$MAGENTA
         model_settings="{}"
         ;;
-    10) 
+    6) 
         model="anthropic:claude-sonnet-4-5-20250929"; name="Claude Sonnet 4.5"; color=$MAGENTA
         # Claude Sonnet 4.5 Token Budget Selection
         clear
@@ -750,7 +750,7 @@ BANNER
         model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget}}"
         name="Claude Sonnet 4.5 ($budget_name)"
         ;;
-    11) 
+    7) 
         model="anthropic:claude-sonnet-4-20250514"; name="Claude Sonnet 4"; color=$MAGENTA
         # Claude Sonnet 4 Token Budget Selection
         clear
