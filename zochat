@@ -200,15 +200,14 @@ BANNER
                                 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
                                 
                                 for i in $(seq 0 $(($event_count - 1))); do
-                                    summary=$(echo "$events" | jq -r ".[$i].summary")
-                                    start_time=$(echo "$events" | jq -r ".[$i].start_time")
-                                    rrule=$(echo "$events" | jq -r ".[$i].rrule")
-                                    model=$(echo "$events" | jq -r ".[$i].model_config.model")
-                                    delivery=$(echo "$events" | jq -r ".[$i].delivery_method")
+                                    title=$(echo "$events" | jq -r ".[$i].title")
+                                    next_run=$(echo "$events" | jq -r ".[$i].next_run")
+                                    model=$(echo "$events" | jq -r ".[$i].model")
+                                    delivery=$(echo "$events" | jq -r ".[$i].result_delivery_method")
                                     
                                     echo ""
-                                    echo -e "  ${CYAN}[$(($i + 1))]${RESET} ${BOLD}$summary${RESET}"
-                                    echo -e "      Next run: ${YELLOW}$start_time${RESET}"
+                                    echo -e "  ${CYAN}[$(($i + 1))]${RESET} ${BOLD}$title${RESET}"
+                                    echo -e "      Next run: ${YELLOW}$next_run${RESET}"
                                     echo -e "      Model:    ${DIM}$model${RESET}"
                                     if [ "$delivery" != "null" ]; then
                                         echo -e "      Delivery: ${MAGENTA}$delivery${RESET}"
