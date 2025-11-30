@@ -9,7 +9,7 @@
                                                                     v1.0
 ```
 
-A powerful CLI for [Zo Computer](https://zo.computer) 
+The most ultimate best fucking CLI for [Zo Computer](https://zo.computer) 
 
 
 ## Installation
