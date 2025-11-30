@@ -225,7 +225,7 @@ BANNER
                         echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
                         ) > "$tmp_file"
                         
-                        less -R -X "$tmp_file"
+                        less -R "$tmp_file"
                         rm -f "$tmp_file"
                         ;;
                     2)
@@ -373,7 +373,7 @@ BANNER
                         echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
                         ) > "$tmp_file"
                         
-                        less -R -X "$tmp_file"
+                        less -R "$tmp_file"
                         rm -f "$tmp_file"
                         ;;
                     2)
@@ -558,7 +558,7 @@ BANNER
             echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
             ) > "$tmp_file"
             
-            less -R -X "$tmp_file"
+            less -R "$tmp_file"
             rm -f "$tmp_file"
             ;;
         5)
