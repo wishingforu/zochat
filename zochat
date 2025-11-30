@@ -173,58 +173,6 @@ BANNER
                 echo ""
                 echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
                 echo ""
-                echo -n "Choice: "
-                read event_choice
-                
-                case $event_choice in
-                    1)
-                        # View events
-                        (
-                        echo -e "${YELLOW}Fetching scheduled events...${RESET}"
-                        echo ""
-                        
-                        events=$(curl -s -X GET "$API_BASE/events/" \
-                            -H "cookie: access_token=$ACCESS_TOKEN" \
-                            -H "origin: https://$DOMAIN")
-                        
-                        if command -v jq > /dev/null 2>&1; then
-                            event_count=$(echo "$events" | jq '. | length' 2>/dev/null)
-                            
-                            if [ "$event_count" = "0" ] || [ -z "$event_count" ]; then
-                                echo -e "${DIM}No scheduled events found.${RESET}"
-                            else
-                                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                                echo -e "  ${BOLD}Scheduled Events ($event_count)${RESET}"
-                                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                                
-                                for i in $(seq 0 $(($event_count - 1))); do
-                                    title=$(echo "$events" | jq -r ".[$i].title")
-                                    next_run=$(echo "$events" | jq -r ".[$i].next_run")
-                                    model=$(echo "$events" | jq -r ".[$i].model")
-                                    delivery=$(echo "$events" | jq -r ".[$i].result_delivery_method")
-                                    
-                                    echo ""
-                                    echo -e "  ${GREEN}[$((i+1))]${RESET} ${BOLD}$title${RESET}"
-                                    echo -e "      Next run: ${CYAN}$next_run${RESET}"
-                                    echo -e "      Model: ${DIM}$model${RESET}"
-                                    [ "$delivery" != "null" ] && echo -e "      Delivery: ${YELLOW}$delivery${RESET}"
-                                done
-                                
-                                echo ""
-                                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                            fi
-                        else
-                            echo -e "${RED}Error: jq not installed. Cannot parse events.${RESET}"
-                        fi
-                        echo ""
-                        echo ""
-                        echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R -X
-                        ;;
-                    2)
-                        # Schedule new event
-                        echo ""
-                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
                         echo -e "  ${BOLD}Schedule New Event${RESET}"
                         echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
                         echo ""
@@ -302,6 +250,8 @@ BANNER
                     1)
                         # List services
                         echo ""
+                        # Use temp file for proper scrolling
+                        tmp_file=$(mktemp)
                         (
                         echo -e "${YELLOW}Fetching services...${RESET}"
                         echo ""
@@ -362,7 +312,10 @@ BANNER
                         fi
                         echo ""
                         echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) | less -R -X
+                        ) > "$tmp_file"
+                        
+                        less -R -X "$tmp_file"
+                        rm -f "$tmp_file"
                         ;;
                     2)
                         # Create service
@@ -425,6 +378,8 @@ BANNER
         4)
             # View billing information
             echo ""
+            # Use temp file for proper scrolling
+            tmp_file=$(mktemp)
             (
             echo -e "${YELLOW}Fetching billing information...${RESET}"
             echo ""
@@ -542,7 +497,10 @@ BANNER
             fi
             echo ""
             echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-            ) | less -R -X
+            ) > "$tmp_file"
+            
+            less -R -X "$tmp_file"
+            rm -f "$tmp_file"
             ;;
         5)
             echo ""
