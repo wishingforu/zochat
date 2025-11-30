@@ -80,14 +80,24 @@ start_server() {
         }
     fi
     
+    # Set temp paths (Windows-compatible)
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+        LOG_FILE="$TEMP/zoMount.log"
+        PID_FILE="$TEMP/zoMount.pid"
+    else
+        LOG_FILE="/tmp/zoMount.log"
+        PID_FILE="/tmp/zoMount.pid"
+    fi
+    
     # Start server in background
-    nohup $PYTHON_CMD "$SERVER_SCRIPT" > /tmp/zoMount.log 2>&1 &
+    echo -e "${YELLOW}Starting Python server...${RESET}"
+    $PYTHON_CMD "$SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
     SERVER_PID=$!
-    echo $SERVER_PID > /tmp/zoMount.pid
+    echo $SERVER_PID > "$PID_FILE"
     
     # Wait for server to be ready
     echo -e "${YELLOW}Waiting for server to start...${RESET}"
-    for i in {1..10}; do
+    for i in {1..15}; do
         if is_server_running; then
             echo -e "${GREEN}✓ Server is running (PID: $SERVER_PID)${RESET}"
             return 0
@@ -96,7 +106,7 @@ start_server() {
     done
     
     echo -e "${RED}✗ Server failed to start${RESET}"
-    echo "Check logs: tail /tmp/zoMount.log"
+    echo "Check logs: cat \"$LOG_FILE\""
     exit 1
 }
 
