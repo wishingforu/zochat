@@ -424,13 +424,31 @@ def main():
         print("Error: ACCESS_TOKEN not found in config")
         sys.exit(1)
     
+    # Find an available port
+    import socket
+    def find_free_port(start_port=9999, max_attempts=100):
+        for port in range(start_port, start_port + max_attempts):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('0.0.0.0', port))
+                sock.close()
+                return port
+            except OSError:
+                continue
+        return None
+    
+    port = find_free_port()
+    if not port:
+        print("Error: Could not find an available port")
+        sys.exit(1)
+    
     print(f"Starting WebDAV server for {domain}...")
-    print(f"Server will run on http://localhost:9999")
+    print(f"Server will run on http://localhost:{port}")
     print()
     print("Mount instructions:")
-    print("  macOS:   mkdir ~/zoMount && mount_webdav http://localhost:9999 ~/zoMount")
-    print("  Linux:   mkdir ~/zoMount && mount -t davfs http://localhost:9999 ~/zoMount")
-    print("  Windows: net use Z: http://localhost:9999")
+    print(f"  macOS:   mkdir ~/zoMount && mount_webdav http://localhost:{port} ~/zoMount")
+    print(f"  Linux:   mkdir ~/zoMount && mount -t davfs http://localhost:{port} ~/zoMount")
+    print(f"  Windows: net use Z: http://localhost:{port}")
     print()
     print("Press Ctrl+C to stop the server")
     print()
@@ -444,7 +462,7 @@ def main():
             "/": provider
         },
         "host": "0.0.0.0",
-        "port": 9999,
+        "port": port,
         "verbose": 1,
         # Disable HTTP authentication - we handle auth via cookies internally
         "http_authenticator": {
@@ -463,7 +481,7 @@ def main():
     try:
         from cheroot import wsgi
         server = wsgi.Server(
-            bind_addr=("0.0.0.0", 9999),
+            bind_addr=("0.0.0.0", port),
             wsgi_app=app
         )
         server.start()
