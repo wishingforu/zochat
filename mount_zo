@@ -103,8 +103,8 @@ start_server() {
     echo -e "${YELLOW}Waiting for server to start...${RESET}"
     for i in {1..15}; do
         if [ -f "$LOG_FILE" ]; then
-            # Extract port from log
-            PORT=$(grep -oP 'http://localhost:\K\d+' "$LOG_FILE" 2>/dev/null | head -1)
+            # Extract port from log (compatible with standard grep)
+            PORT=$(grep "Server will run on" "$LOG_FILE" | grep -o "[0-9]*$" | head -1)
             if [ -n "$PORT" ]; then
                 ZO_MOUNT_PORT=$PORT
                 if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/ 2>/dev/null | grep -q "200\|301\|302\|401"; then
