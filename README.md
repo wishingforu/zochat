@@ -1,56 +1,78 @@
-```text
  ________  ________          ________  ___  ___  ________  _________   
 |\_____  \|\   __  \        |\   ____\|\  \|\  \|\   __  \|\___   ___\ 
  \|___/  /\ \  \|\  \       \ \  \___|\ \  \\\  \ \  \|\  \|___ \  \_| 
      /  / /\ \  \\\  \       \ \  \    \ \   __  \ \   __  \   \ \  \  
     /  /_/__\ \  \\\  \       \ \  \____\ \  \ \  \ \  \ \  \   \ \  \ 
    |\________\ \_______\       \ \_______\ \__\ \__\ \__\ \__\   \ \__\
-    \|_______|\|_______|        \|_______|\|__|\|__|\|__|\|__|    \|__| 			v1. 
-```
-> A [https://zo.computer](https://zo.computer) CLI
+    \|_______|\|_______|        \|_______|\|__|\|__|\|__|\|__|    \|__| 
+                                                                    v2.0
+
+A powerful CLI for [Zo Computer](https://zo.computer) - Chat, Billing, Events, and Services.
+
 ## Installation
-### Quick Install (Recommended)
+
+### Option 1: Quick Install (Git)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wishingforu/zo-chat-cli/main/install.sh | bash
+git clone https://github.com/wishingforu/zochat.git
+cd zochat
+chmod +x zochat
+./zochat
 ```
-### Install with Git
+
+### Option 2: Manual Install (Single Script)
+Download the script directly and run it:
+
 ```bash
-git clone https://github.com/wishingforu/zo-chat-cli.git
-cd zo-chat-cli
-chmod +x install.sh
-./install.sh
+# Download
+curl -o zochat https://raw.githubusercontent.com/wishingforu/zochat/main/zochat
+
+# Make executable
+chmod +x zochat
+
+# Run
+./zochat
 ```
-### Manual Install
-1. **Download the script**
-   ```bash
-   curl -O https://raw.githubusercontent.com/wishingforu/zo-chat-cli/main/zo-chat
-   ```
-2. **Make it executable**
-   ```bash
-   chmod +x zo-chat
-   ```
-3. **Move to your PATH**
-   ```bash
-   mv zo-chat ~/.local/bin/chat
-   ```
-   *Or run directly:*
-   ```bash
-   ./zo-chat
-   ```
+
+### Optional: Add to PATH
+To run it from anywhere by just typing `zochat`:
+
+```bash
+mkdir -p ~/.local/bin
+mv zochat ~/.local/bin/
+# Ensure ~/.local/bin is in your PATH
+```
+
 ## Requirements
-- **Bash** 4.0 or higher
-- **curl** - For API requests
-- **jq** - For JSON parsing
-- **Unix-based OS** (Linux, macOS, WSL on Windows)
-## Quick Start
-Run the tool:
-```bash
-chat
+- **Bash** 4.0+
+- **curl** (for API requests)
+- **jq** (for JSON parsing & charts)
+- **Unix-like OS** (Linux, macOS, WSL)
+
+## Features
+- ** All ZO AI services**: GPT-5.1, Claude 3.5, Grok, Gemini, and more
+- **Billing Dashboard**: View credits, invoices, and ASCII usage charts
+- **Event Scheduler**: Manage recurring tasks and reminders
+- **User Services**: Deploy and monitor your services (HTTP/TCP)
+- ** Advanced Config**: Reasoning levels, token budgets, and verbosity control
+
+## First-Time Setup
+When you first run `./zochat`, you'll be prompted for:
+
+1. **Access Token**: 
+   - Press `F12` on zo.computer
+   - Go to **Application** > **Cookies** > **.zo.computer**
+   - Copy the value of `access_token`
+2. **Domain**: 
+   - Your subdomain (e.g., `daniel` if your URL is `daniel.zo.computer`)
+
+## Usage
+The main menu gives you quick access to all features:
+
 ```
-### First-time setup
-You'll be prompted for:
-1. **Access Token** - Get from Zo Computer:
-   - Press `F12` in your browser
-   - Go to `Application` > `Cookies` > `.zo.computer`
-   - Copy the `access_token` value
-2. **Domain** - Your Zo subdomain (e.g., enter `yourname` if your URL is `yourname.zo.computer`).
+  [1] Chat with AI      - Start a conversation
+  [2] View Events       - List scheduled tasks
+  [3] Schedule Event    - Create new task
+  [4] View Billing      - Credits and usage
+  [5] User Services     - Manage services
+  [6] Exit              - Close application
+```
