@@ -71,6 +71,47 @@ save_stats() {
 }
 SESSION_MESSAGES=0
 SESSION_TOKENS=0
+# Self-update function
+update_script() {
+    echo ""
+    echo -e "${YELLOW}Checking for updates...${RESET}"
+    echo ""
+    
+    # Check if running from git repo
+    if [ -d ".git" ] || git rev-parse --git-dir > /dev/null 2>&1; then
+        echo -e "${DIM}Git repository detected. Pulling changes...${RESET}"
+        if git pull origin main; then
+            echo ""
+            echo -e "${GREEN}✓ Updated successfully!${RESET}"
+            echo -e "${DIM}Restarting application...${RESET}"
+            sleep 1
+            exec "$0"
+        else
+            echo ""
+            echo -e "${RED}✗ Update failed.${RESET}"
+            echo -e "Try running 'git pull' manually."
+        fi
+    else
+        # Direct download update
+        echo -e "${DIM}Downloading latest version...${RESET}"
+        if curl -s -o "$0.tmp" "https://raw.githubusercontent.com/wishingforu/zochat/main/zochat"; then
+            chmod +x "$0.tmp"
+            mv "$0.tmp" "$0"
+            echo ""
+            echo -e "${GREEN}✓ Updated successfully!${RESET}"
+            echo -e "${DIM}Restarting application...${RESET}"
+            sleep 1
+            exec "$0"
+        else
+            echo ""
+            echo -e "${RED}✗ Download failed.${RESET}"
+            rm -f "$0.tmp"
+        fi
+    fi
+    echo ""
+    read -n 1 -s -r -p "Press any key to continue..."
+}
+
 while true; do
     clear
     echo -e "${MAGENTA}"
@@ -93,7 +134,8 @@ BANNER
     echo -e "  ${CYAN}[3]${RESET} ${BOLD}Schedule Event${RESET}    - Create new task"
     echo -e "  ${CYAN}[4]${RESET} ${BOLD}View Billing${RESET}      - Credits and usage"
     echo -e "  ${CYAN}[5]${RESET} ${BOLD}User Services${RESET}     - Manage services"
-    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Exit${RESET}              - Close application"
+    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Update Tool${RESET}       - Get latest version"
+    echo -e "  ${CYAN}[7]${RESET} ${BOLD}Exit${RESET}              - Close application"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
@@ -457,6 +499,9 @@ BANNER
             done
             ;;
         6)
+            update_script
+            ;;
+        7)
             echo ""
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""
