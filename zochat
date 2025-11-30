@@ -142,7 +142,6 @@ BANNER
     read main_choice
     # Strip whitespace/newlines
     main_choice=$(echo "$main_choice" | tr -d '[:space:]')
-    echo "Debug: Received '$main_choice'"
 
     case $main_choice in
         1)
@@ -180,9 +179,6 @@ BANNER
                 case $event_choice in
                     1)
                         # View events
-                        # Use temp file for proper scrolling
-                        tmp_file=$(mktemp)
-                        (
                         echo -e "${YELLOW}Fetching scheduled events...${RESET}"
                         echo ""
                         
@@ -223,11 +219,7 @@ BANNER
                         fi
                         echo ""
                         echo ""
-                        echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) > "$tmp_file"
-                        
-                        less -R "$tmp_file"
-                        rm -f "$tmp_file"
+                        read -n 1 -s -r -p "Press any key to continue..."
                         ;;
                     2)
                         # Schedule new event
@@ -310,9 +302,6 @@ BANNER
                     1)
                         # List services
                         echo ""
-                        # Use temp file for proper scrolling
-                        tmp_file=$(mktemp)
-                        (
                         echo -e "${YELLOW}Fetching services...${RESET}"
                         echo ""
                         
@@ -371,11 +360,7 @@ BANNER
                             echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
                         fi
                         echo ""
-                        echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-                        ) > "$tmp_file"
-                        
-                        less -R "$tmp_file"
-                        rm -f "$tmp_file"
+                        read -n 1 -s -r -p "Press any key to continue..."
                         ;;
                     2)
                         # Create service
@@ -438,9 +423,6 @@ BANNER
         4)
             # View billing information
             echo ""
-            # Use temp file for proper scrolling
-            tmp_file=$(mktemp)
-            (
             echo -e "${YELLOW}Fetching billing information...${RESET}"
             echo ""
             
@@ -556,11 +538,7 @@ BANNER
                 echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
             fi
             echo ""
-            echo -e "${DIM}Press 'q' to return to menu, use arrow keys to scroll${RESET}"
-            ) > "$tmp_file"
-            
-            less -R "$tmp_file"
-            rm -f "$tmp_file"
+            read -n 1 -s -r -p "Press any key to continue..."
             ;;
         5)
             echo ""
