@@ -611,7 +611,7 @@ cat << "BANNER"
 BANNER
 echo -e "${RESET}"
 echo ""
-echo -e "${BOLD}${CYAN}           Select Your AI Model${RESET}"
+echo -e "${BOLD}${CYAN}       Select Your AI Model${RESET}"
 echo ""
 echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
