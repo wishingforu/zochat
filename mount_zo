@@ -33,6 +33,27 @@ is_server_running() {
     curl -s -o /dev/null -w "%{http_code}" http://localhost:$ZO_MOUNT_PORT/ 2>/dev/null | grep -q "200\|301\|302\|401"
 }
 
+# Check if we're running inside Zo Computer environment
+check_zo_computer_environment() {
+    # Check if we're in the workspace directory
+    if [[ "$PWD" == /home/workspace* ]]; then
+        return 0
+    fi
+    
+    # Check for Zo Computer specific paths
+    if [ -d "/home/workspace" ] || [ -d "/__substrate" ]; then
+        return 0
+    fi
+    
+    # Check hostname patterns
+    if [[ "$(hostname)" == *"zo.computer"* ]]; then
+        return 0
+    fi
+    
+    # Not in Zo Computer environment
+    return 1
+}
+
 # Start WebDAV server
 start_server() {
     echo -e "${CYAN}Starting WebDAV server...${RESET}"
@@ -221,6 +242,38 @@ stop_server() {
 # Main command handler
 case "${1:-mount}" in
     mount)
+        # Check if we're running inside Zo Computer
+        if check_zo_computer_environment; then
+            clear
+            echo -e "${RED}"
+            cat << "ERROR"
+     ██████╗ ██╗  ██╗    ███╗   ██╗ ██████╗ 
+    ██╔═══██╗██║  ██║    ████╗  ██║██╔═══██╗
+    ██║   ██║███████║    ██╔██╗ ██║██║   ██║
+    ██║   ██║██╔══██║    ██║╚██╗██║██║   ██║
+    ╚██████╔╝██║  ██║    ██║ ╚████║╚██████╔╝
+     ╚═════╝ ╚═╝  ╚═╝    ╚═╝  ╚═══╝ ╚═════╝ 
+ERROR
+            echo -e "${RESET}"
+            echo ""
+            echo -e "${BOLD}${RED}Cannot Mount From Zo Computer VPS!${RESET}"
+            echo ""
+            echo -e "${YELLOW}This feature is designed for mounting your Zo Computer workspace"
+            echo -e "onto your ${BOLD}local machine${RESET}${YELLOW} (Windows, macOS, Linux laptop/desktop).${RESET}"
+            echo ""
+            echo -e "You are currently ${RED}inside${RESET} your Zo Computer VPS environment."
+            echo -e "Mounting the workspace onto itself doesn't make sense!"
+            echo ""
+            echo -e "${CYAN}To use this feature:${RESET}"
+            echo -e "  1. Exit your SSH session (type 'exit')"
+            echo -e "  2. Run zochat on your ${BOLD}local machine${RESET}"
+            echo -e "  3. Select [8] Mount"
+            echo ""
+            echo -e "${DIM}Detected: $(hostname) | $(pwd)${RESET}"
+            echo ""
+            exit 1
+        fi
+        
         if is_server_running; then
             echo -e "${GREEN}Server is already running${RESET}"
         else
