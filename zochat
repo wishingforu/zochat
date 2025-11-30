@@ -612,6 +612,8 @@ BANNER
         echo ""
         echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
         echo ""
+        echo -e "${DIM}Type '/exit' anytime to return to main menu${RESET}"
+        echo ""
         echo -n "Reasoning Level: "
         read reasoning_choice
         
@@ -632,6 +634,8 @@ BANNER
         echo -e "  ${GREEN}[3]${RESET} ${BOLD}High${RESET}     - Detailed explanations"
         echo ""
         echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "${DIM}Type '/exit' anytime to return to main menu${RESET}"
         echo ""
         echo -n "Verbosity: "
         read verbosity_choice
