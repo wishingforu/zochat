@@ -133,8 +133,10 @@ while true; do
 BANNER
     echo -e "${RESET}"
     echo ""
-    echo -e "${BOLD}           Welcome to Zo Chat${RESET}"
+    echo -e "${BOLD}   The Ultimate CLI Tool for Zo Computer${RESET}"
     echo ""
+    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "  ${DIM}Connected as: ${GREEN}${DOMAIN}${RESET}"
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     echo -e "  ${CYAN}[1]${RESET} ${BOLD}Chat with AI${RESET}      - Start a conversation"
@@ -552,6 +554,42 @@ BANNER
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""
             exit 0
+            ;;
+        /horse)
+            clear
+            echo -e "${CYAN}"
+            cat << 'HORSE'
+                                                                         
+                                     <k@$$$$$$$$$$$$$$$$_               
+                   )/ckWBB@x.      ($$$$$$$$$$$$$$$$$$$@.               
+                  b$$$@BBM_\@%    ~B$$$$$$$$$$$$$$$$$$$h                
+                  b<[@$$$$$@L(B\. \$$$$$$$$$$$$$$$$$$@W                 
+                  bvC@@$$$$$$B`Bb t$$$$$$$$$$$$$$$$$8'.                 
+                  b@#. :@$$$$$@ @Ou$$$$$$@$@$$@@ot                      
+                  w^m,  f@$@."\'`zm$$@.                                 
+                   ..   /@$$$$$$@^@$$#                                  
+                 .h$@C .@$$$$$B^h@@@@i                                  
+                 lBu@W.>\B$$$$@bbkhBB                                   
+                .@Y  lB@@"B$$$@@$$$$@@                                  
+                &&. .@+.@$^$$@"B$$$$@XwqZ(.                             
+               .8O, hQ  IBBBBn#@$$$$$$$$$$$B@B@BBi                      
+                   nd        b@@@$@@@@$$$$$$$@'@$@{                     
+                   [@q'         .O8'8@$$$$$$$@ $$$&                     
+                     ..       "@%"@$$$$$$$$$^ $$$&                     
+                             M$$@X@$$$$$@h(    $$$&                     
+                             B$$$O_B$$$B       $$$&                     
+                              f@@h. ?@@*       @$$&                     
+                                d@j   ?B@W     YB$&                     
+                              -B@"    *BJ       "@B}                    
+                           .]@8    .&@C                                 
+                          _Bw^    MBJ                                   
+                         tttl   a@@B'                                   
+                                                                         
+HORSE
+            echo -e "${RESET}"
+            echo -e "${DIM}            The legendary Zo Computer steed${RESET}"
+            echo ""
+            read -n 1 -s -r -p "Press any key to continue..."
             ;;
         *)
             echo "Invalid choice"
