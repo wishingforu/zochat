@@ -1,0 +1,848 @@
+#!/bin/bash
+CONFIG_DIR="$HOME/.config/zo-chat"
+CONFIG_FILE="$CONFIG_DIR/config"
+STATS_FILE="$CONFIG_DIR/stats.json"
+# Colors
+CYAN='\033[36m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+MAGENTA='\033[35m'
+BLUE='\033[34m'
+RED='\033[31m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+setup() {
+    clear
+    echo -e "${CYAN}"
+    cat << "BANNER"
+    ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+    ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+      ███╔╝ ██║   ██║    ██║     ███████║███████║   ██║   
+     ███╔╝  ██║   ██║    ██║     ██╔══██║██╔══██║   ██║   
+    ███████╗╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║   
+    ╚══════╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+BANNER
+    echo -e "${RESET}"
+    echo -e "${BOLD}        Terminal AI Client - First Time Setup${RESET}"
+    echo ""
+    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    echo "How to get your access token:"
+    echo -e "  ${CYAN}1.${RESET} Open Zo Computer in browser"
+    echo -e "  ${CYAN}2.${RESET} Press ${BOLD}F12${RESET} for DevTools"
+    echo -e "  ${CYAN}3.${RESET} Application → Cookies → .zo.computer"
+    echo -e "  ${CYAN}4.${RESET} Copy the ${BOLD}'access_token'${RESET} value"
+    echo ""
+    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    echo -n "Paste your token: "
+    read -r token
+    echo -n "Your domain (e.g., daniel): "
+    read -r domain
+    
+    mkdir -p "$CONFIG_DIR"
+    echo "ACCESS_TOKEN=\"$token\"" > "$CONFIG_FILE"
+    echo "DOMAIN=\"${domain}.zo.computer\"" >> "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+    
+    # Initialize stats
+    echo '{"total_messages":0,"total_tokens":0,"sessions":0}' > "$STATS_FILE"
+    
+    echo ""
+    echo -e "${GREEN}✓${RESET} Setup complete! Config saved securely."
+    sleep 2
+}
+[ ! -f "$CONFIG_FILE" ] && setup
+source "$CONFIG_FILE"
+# Load/create stats
+[ ! -f "$STATS_FILE" ] && echo '{"total_messages":0,"total_tokens":0,"sessions":0}' > "$STATS_FILE"
+API_BASE="https://api.zo.computer"
+trap 'save_stats; echo ""; echo -e "${DIM}Session ended. Goodbye!${RESET}"; exit 0' INT TERM
+# Update session count
+if command -v jq >/dev/null 2>&1; then
+    jq '.sessions += 1' "$STATS_FILE" > "$STATS_FILE.tmp" && mv "$STATS_FILE.tmp" "$STATS_FILE"
+fi
+save_stats() {
+    if command -v jq >/dev/null 2>&1; then
+        [ -n "$SESSION_MESSAGES" ] && jq ".total_messages += $SESSION_MESSAGES" "$STATS_FILE" > "$STATS_FILE.tmp" && mv "$STATS_FILE.tmp" "$STATS_FILE"
+        [ -n "$SESSION_TOKENS" ] && jq ".total_tokens += $SESSION_TOKENS" "$STATS_FILE" > "$STATS_FILE.tmp" && mv "$STATS_FILE.tmp" "$STATS_FILE"
+    fi
+}
+SESSION_MESSAGES=0
+SESSION_TOKENS=0
+clear
+echo -e "${MAGENTA}"
+cat << "BANNER"
+    ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+    ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+      ███╔╝ ██║   ██║    ██║     ███████║███████║   ██║   
+     ███╔╝  ██║   ██║    ██║     ██╔══██║██╔══██║   ██║   
+    ███████╗╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║   
+    ╚══════╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+BANNER
+echo -e "${RESET}"
+echo ""
+echo -e "${BOLD}           Welcome to Zo Chat${RESET}"
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -e "  ${CYAN}[1]${RESET} ${BOLD}Chat with AI${RESET}      - Start a conversation"
+echo -e "  ${CYAN}[2]${RESET} ${BOLD}View Events${RESET}       - List scheduled tasks"
+echo -e "  ${CYAN}[3]${RESET} ${BOLD}Schedule Event${RESET}    - Create new task"
+echo -e "  ${CYAN}[4]${RESET} ${BOLD}View Billing${RESET}      - Credits and usage"
+echo -e "  ${CYAN}[5]${RESET} ${BOLD}User Services${RESET}     - Manage services"
+echo -e "  ${CYAN}[6]${RESET} ${BOLD}Exit${RESET}              - Close application"
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -n "Choice: "
+read main_choice
+
+case $main_choice in
+    1)
+        # Continue to AI model selection
+        ;;
+    2)
+        # View events
+        echo ""
+        echo -e "${YELLOW}Fetching scheduled events...${RESET}"
+        echo ""
+        
+        events=$(curl -s -X GET "$API_BASE/events/" \
+            -H "cookie: access_token=$ACCESS_TOKEN" \
+            -H "origin: https://$DOMAIN")
+        
+        if command -v jq > /dev/null 2>&1; then
+            event_count=$(echo "$events" | jq '. | length' 2>/dev/null)
+            
+            if [ "$event_count" = "0" ] || [ -z "$event_count" ]; then
+                echo -e "${DIM}No scheduled events found.${RESET}"
+            else
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Scheduled Events ($event_count)${RESET}"
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                
+                for i in $(seq 0 $(($event_count - 1))); do
+                    title=$(echo "$events" | jq -r ".[$i].title")
+                    next_run=$(echo "$events" | jq -r ".[$i].next_run")
+                    model=$(echo "$events" | jq -r ".[$i].model")
+                    delivery=$(echo "$events" | jq -r ".[$i].result_delivery_method")
+                    
+                    echo ""
+                    echo -e "  ${GREEN}[$((i+1))]${RESET} ${BOLD}$title${RESET}"
+                    echo -e "      Next run: ${CYAN}$next_run${RESET}"
+                    echo -e "      Model: ${DIM}$model${RESET}"
+                    [ "$delivery" != "null" ] && echo -e "      Delivery: ${YELLOW}$delivery${RESET}"
+                done
+                
+                echo ""
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            fi
+        else
+            echo -e "${RED}Error: jq not installed. Cannot parse events.${RESET}"
+        fi
+        echo ""
+        exit 0
+        ;;
+    3)
+        # Schedule new event
+        echo ""
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo -e "  ${BOLD}Schedule New Event${RESET}"
+        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Event title: "
+        read event_title
+        echo -n "Instruction: "
+        read event_instruction
+        echo ""
+        echo -e "${DIM}RRULE examples:${RESET}"
+        echo -e "  ${CYAN}RRULE:FREQ=DAILY;BYHOUR=7;BYMINUTE=0${RESET}  - Every day at 7:00 AM"
+        echo -e "  ${CYAN}RRULE:FREQ=WEEKLY;BYDAY=MO;BYHOUR=9${RESET}   - Every Monday at 9:00 AM"
+        echo ""
+        echo -n "RRULE: "
+        read event_rrule
+        
+        event_json="{\"title\":\"$event_title\",\"instruction\":\"$event_instruction\",\"rrule\":\"$event_rrule\"}"
+        
+        echo ""
+        echo -e "${YELLOW}Creating event...${RESET}"
+        
+        result=$(curl -s -X POST "$API_BASE/events/" \
+            -H "content-type: application/json" \
+            -H "cookie: access_token=$ACCESS_TOKEN" \
+            -H "origin: https://$DOMAIN" \
+            -d "$event_json")
+        
+        if echo "$result" | grep -q "id"; then
+            echo -e "${GREEN}✓${RESET} Event created successfully!"
+        else
+            echo -e "${RED}✗${RESET} Failed to create event"
+            echo "$result"
+        fi
+        echo ""
+        exit 0
+        ;;
+    4)
+        # View billing information
+        echo ""
+        echo -e "${YELLOW}Fetching billing information...${RESET}"
+        echo ""
+        
+        billing=$(curl -s -X GET "$API_BASE/billing/usage-alert" \
+            -H "cookie: access_token=$ACCESS_TOKEN" \
+            -H "origin: https://$DOMAIN")
+        
+        usage_data=$(curl -s -X GET "$API_BASE/billing/meter-usage?meter_kind=chat&timezone=America%2FChicago" \
+            -H "cookie: access_token=$ACCESS_TOKEN" \
+            -H "origin: https://$DOMAIN")
+        
+        if command -v jq > /dev/null 2>&1; then
+            credits_cents=$(echo "$billing" | jq -r '.remaining_credits_amount_cents' 2>/dev/null)
+            credits_dollars=$(awk "BEGIN {printf \"%.2f\", $credits_cents / 100}")
+            
+            invoice_total=$(echo "$billing" | jq -r '.upcoming_invoice.total_display' 2>/dev/null)
+            next_payment=$(echo "$billing" | jq -r '.upcoming_invoice.next_payment_attempt' 2>/dev/null)
+            
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "  ${BOLD}Billing Overview${RESET}"
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo ""
+            echo -e "  ${BOLD}Credit Balance:${RESET} ${GREEN}\$$credits_dollars${RESET}"
+            echo -e "  ${BOLD}Next Invoice:${RESET}   ${YELLOW}$invoice_total${RESET}"
+            echo ""
+            
+            # Token usage chart
+            data_count=$(echo "$usage_data" | jq -r '.data | length' 2>/dev/null)
+            
+            if [ "$data_count" -gt 0 ]; then
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Token Usage Chart (Last 24h)${RESET}"
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                
+                # Find max value for scaling
+                max_value=0
+                for i in $(seq 0 $(($data_count - 1))); do
+                    value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                    value=${value%.*}  # Remove decimal
+                    [ $value -gt $max_value ] && max_value=$value
+                done
+                
+                # Show last 20 data points
+                start_idx=$(($data_count - 20))
+                [ $start_idx -lt 0 ] && start_idx=0
+                
+                for i in $(seq $start_idx $(($data_count - 1))); do
+                    timestamp=$(echo "$usage_data" | jq -r ".data[$i].bucket_start_time" 2>/dev/null)
+                    value=$(echo "$usage_data" | jq -r ".data[$i].bucket_value" 2>/dev/null)
+                    value=${value%.*}
+                    
+                    # Format time (HH:MM)
+                    time_str=$(date -d @$timestamp +"%H:%M" 2>/dev/null || echo "??:??")
+                    
+                    # Calculate bar width (max 40 chars)
+                    if [ $max_value -gt 0 ]; then
+                        bar_width=$((value * 40 / max_value))
+                    else
+                        bar_width=0
+                    fi
+                    
+                    # Create bar
+                    bar=""
+                    for ((j=0; j<bar_width; j++)); do
+                        bar+="█"
+                    done
+                    
+                    # Format value with K suffix if large
+                    if [ $value -gt 10000 ]; then
+                        value_display=$(awk "BEGIN {printf \"%.1fK\", $value / 1000}")
+                    else
+                        value_display=$(printf "%'d" $value 2>/dev/null || echo $value)
+                    fi
+                    
+                    printf "  ${DIM}%5s${RESET} ${GREEN}%-40s${RESET} ${CYAN}%8s${RESET}\n" "$time_str" "$bar" "$value_display"
+                done
+                
+                echo ""
+            fi
+            
+            # Show usage breakdown
+            period_count=$(echo "$billing" | jq -r '.upcoming_invoice.periods | length' 2>/dev/null)
+            
+            if [ "$period_count" -gt 0 ]; then
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Usage Breakdown${RESET}"
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                
+                for period_idx in $(seq 0 $(($period_count - 1))); do
+                    period_label=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].label" 2>/dev/null)
+                    line_count=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines | length" 2>/dev/null)
+                    
+                    echo ""
+                    echo -e "  ${BOLD}$period_label${RESET}"
+                    
+                    for line_idx in $(seq 0 $(($line_count - 1))); do
+                        desc=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].description" 2>/dev/null)
+                        qty=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].quantity" 2>/dev/null)
+                        amount=$(echo "$billing" | jq -r ".upcoming_invoice.periods[$period_idx].lines[$line_idx].amount_display" 2>/dev/null)
+                        
+                        # Format quantity with commas
+                        qty_formatted=$(printf "%'d" $qty 2>/dev/null || echo $qty)
+                        
+                        printf "    ${DIM}%-35s${RESET} %15s  ${GREEN}%8s${RESET}\n" "$desc" "$qty_formatted" "$amount"
+                    done
+                done
+                
+                echo ""
+                echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            fi
+        else
+            echo -e "${RED}Error: jq not installed. Cannot parse billing data.${RESET}"
+        fi
+        echo ""
+        exit 0
+        ;;
+    5)
+        # User Services Management
+        clear
+        echo -e "${MAGENTA}"
+        cat << "BANNER"
+    ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+    ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+      ███╔╝ ██║   ██║    ██║     ███████║███████║   ██║   
+     ███╔╝  ██║   ██║    ██║     ██╔══██║██╔══██║   ██║   
+    ███████╗╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║   
+    ╚══════╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+BANNER
+        echo -e "${RESET}"
+        echo ""
+        echo -e "${BOLD}           User Services${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${CYAN}[1]${RESET} ${BOLD}List Services${RESET}   - View all services"
+        echo -e "  ${CYAN}[2]${RESET} ${BOLD}Create Service${RESET}  - Deploy new service"
+        echo -e "  ${CYAN}[3]${RESET} ${BOLD}Back${RESET}            - Return to main menu"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Choice: "
+        read service_choice
+        
+        case $service_choice in
+            1)
+                # List services
+                echo ""
+                echo -e "${YELLOW}Fetching services...${RESET}"
+                echo ""
+                
+                services=$(curl -s -X GET "$API_BASE/user-services/" \
+                    -H "cookie: access_token=$ACCESS_TOKEN" \
+                    -H "origin: https://$DOMAIN")
+                
+                if command -v jq > /dev/null 2>&1; then
+                    service_count=$(echo "$services" | jq '. | length' 2>/dev/null)
+                    
+                    if [ "$service_count" = "0" ] || [ -z "$service_count" ]; then
+                        echo -e "${DIM}No services found.${RESET}"
+                    else
+                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        echo -e "  ${BOLD}Active Services ($service_count)${RESET}"
+                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        
+                        for i in $(seq 0 $(($service_count - 1))); do
+                            label=$(echo "$services" | jq -r ".[$i].label")
+                            protocol=$(echo "$services" | jq -r ".[$i].protocol")
+                            port=$(echo "$services" | jq -r ".[$i].local_port")
+                            http_url=$(echo "$services" | jq -r ".[$i].http_url")
+                            tcp_addr=$(echo "$services" | jq -r ".[$i].tcp_addr")
+                            
+                            # Check if service is reachable (simple heuristic)
+                            status="${GREEN}●${RESET}"  # Online
+                            
+                            echo ""
+                            echo -e "  $status ${BOLD}$label${RESET} ${DIM}($protocol:$port)${RESET}"
+                            
+                            if [ "$http_url" != "null" ]; then
+                                echo -e "      ${CYAN}HTTP:${RESET} $http_url"
+                            fi
+                            
+                            if [ "$tcp_addr" != "null" ]; then
+                                echo -e "      ${CYAN}TCP:${RESET}  $tcp_addr"
+                            fi
+                        done
+                        
+                        echo ""
+                        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    fi
+                else
+                    echo -e "${RED}Error: jq not installed. Cannot parse services.${RESET}"
+                fi
+                echo ""
+                ;;
+            2)
+                # Create service
+                echo ""
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo -e "  ${BOLD}Create New Service${RESET}"
+                echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                echo ""
+                echo -n "Service label: "
+                read svc_label
+                echo -n "Protocol (http/tcp): "
+                read svc_protocol
+                echo -n "Local port: "
+                read svc_port
+                echo -n "Entrypoint command: "
+                read svc_entrypoint
+                echo -n "Working directory: "
+                read svc_workdir
+                
+                service_json="{\"label\":\"$svc_label\",\"protocol\":\"$svc_protocol\",\"local_port\":$svc_port,\"entrypoint\":\"$svc_entrypoint\",\"workdir\":\"$svc_workdir\"}"
+                
+                echo ""
+                echo -e "${YELLOW}Creating service...${RESET}"
+                
+                result=$(curl -s -X POST "$API_BASE/user-services/" \
+                    -H "content-type: application/json" \
+                    -H "cookie: access_token=$ACCESS_TOKEN" \
+                    -H "origin: https://$DOMAIN" \
+                    -d "$service_json")
+                
+                if echo "$result" | grep -q "service_id"; then
+                    echo -e "${GREEN}✓${RESET} Service created successfully!"
+                    echo ""
+                    
+                    # Show service details
+                    if command -v jq > /dev/null 2>&1; then
+                        http_url=$(echo "$result" | jq -r '.http_url')
+                        tcp_addr=$(echo "$result" | jq -r '.tcp_addr')
+                        
+                        [ "$http_url" != "null" ] && echo -e "  ${CYAN}HTTP URL:${RESET} $http_url"
+                        [ "$tcp_addr" != "null" ] && echo -e "  ${CYAN}TCP Address:${RESET} $tcp_addr"
+                    fi
+                else
+                    echo -e "${RED}✗${RESET} Failed to create service"
+                    echo "$result"
+                fi
+                echo ""
+                ;;
+            3)
+                exec "$0"
+                ;;
+            *)
+                echo "Invalid choice"
+                ;;
+        esac
+        exit 0
+        ;;
+    6)
+        echo ""
+        echo -e "${DIM}Goodbye!${RESET}"
+        echo ""
+        exit 0
+        ;;
+    *)
+        echo "Invalid choice"
+        exit 1
+        ;;
+esac
+
+clear
+echo -e "${MAGENTA}"
+cat << "BANNER"
+    ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+    ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+      ███╔╝ ██║   ██║    ██║     ███████║███████║   ██║   
+     ███╔╝  ██║   ██║    ██║     ██╔══██║██╔══██║   ██║   
+    ███████╗╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║   
+    ╚══════╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+BANNER
+echo -e "${RESET}"
+echo ""
+echo -e "${BOLD}           Select Your AI Model${RESET}"
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -e "  ${CYAN}[1]${RESET} ${BOLD}GPT-5.1${RESET}        - OpenAI's latest flagship"
+echo -e "  ${CYAN}[2]${RESET} ${BOLD}GPT-5 Mini${RESET}     - Fast and efficient"
+echo -e "  ${CYAN}[3]${RESET} ${BOLD}Claude Haiku${RESET}   - Anthropic's smart assistant"
+echo -e "  ${CYAN}[4]${RESET} ${BOLD}Grok 4${RESET}         - xAI's reasoning powerhouse"
+echo -e "  ${CYAN}[5]${RESET} ${BOLD}Gemini 3 Pro${RESET}   - Google's advanced model"
+echo -e "  ${CYAN}[6]${RESET} ${BOLD}GLM-4.6${RESET}        - Z-AI's exacto model"
+echo -e "  ${CYAN}[7]${RESET} ${BOLD}Kimi K2${RESET}        - Moonshot's thinking model"
+echo -e "  ${CYAN}[8]${RESET} ${BOLD}GPT-5.1 Codex${RESET} - OpenAI's code specialist"
+echo -e "  ${CYAN}[9]${RESET} ${BOLD}Claude Opus 4.5${RESET} - Anthropic's most capable"
+echo -e "  ${CYAN}[10]${RESET} ${BOLD}Claude Sonnet 4.5${RESET} - Balanced performance"
+echo -e "  ${CYAN}[11]${RESET} ${BOLD}Claude Sonnet 4${RESET} - Reliable assistant"
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -n "Choice: "
+read choice
+case $choice in
+    1) 
+        model="openai:gpt-5.1-2025-11-13"; name="GPT-5.1"; color=$GREEN
+        # GPT-5.1 Reasoning Level Selection
+        clear
+        echo -e "${GREEN}"
+        cat << "BANNER"
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║              GPT-5.1 REASONING MODE                       ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+BANNER
+        echo -e "${RESET}"
+        echo ""
+        echo -e "${BOLD}           Select Reasoning Depth${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${GREEN}[0]${RESET} ${BOLD}Quick Mode${RESET}      - Fast responses, minimal reasoning"
+        echo -e "  ${GREEN}[1]${RESET} ${BOLD}Balanced Mode${RESET}   - Moderate reasoning depth"
+        echo -e "  ${GREEN}[2]${RESET} ${BOLD}Deep Thinking${RESET}   - Maximum reasoning power"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Reasoning Level: "
+        read reasoning_choice
+        
+        case $reasoning_choice in
+            0) reasoning_level=0; reasoning_name="Quick" ;;
+            1) reasoning_level=1; reasoning_name="Balanced" ;;
+            2) reasoning_level=2; reasoning_name="Deep" ;;
+            *) reasoning_level=1; reasoning_name="Balanced" ;;
+        esac
+        
+        echo ""
+        echo -e "${BOLD}           Select Verbosity Level${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${GREEN}[1]${RESET} ${BOLD}Low${RESET}      - Concise responses"
+        echo -e "  ${GREEN}[2]${RESET} ${BOLD}Medium${RESET}   - Standard detail"
+        echo -e "  ${GREEN}[3]${RESET} ${BOLD}High${RESET}     - Detailed explanations"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Verbosity: "
+        read verbosity_choice
+        
+        case $verbosity_choice in
+            1) verbosity_level="low" ;;
+            2) verbosity_level="medium" ;;
+            3) verbosity_level="high" ;;
+            *) verbosity_level="low" ;;
+        esac
+        
+        model_settings="{\"reasoning\":{\"kind\":\"level\",\"level\":$reasoning_level},\"verbosity\":\"$verbosity_level\"}"
+        name="GPT-5.1 ($reasoning_name)"
+        ;;
+    2) 
+        model="openai:gpt-5-mini-2025-08-07"; name="GPT-5 Mini"; color=$BLUE
+        model_settings="{}"
+        ;;
+    3) 
+        model="anthropic:claude-haiku-4-5-20251001"; name="Claude Haiku"; color=$MAGENTA
+        # Claude Haiku Token Budget Selection
+        clear
+        echo -e "${MAGENTA}"
+        cat << "BANNER"
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║              CLAUDE HAIKU TOKEN BUDGET                    ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+BANNER
+        echo -e "${RESET}"
+        echo ""
+        echo -e "${BOLD}           Select Token Budget${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${MAGENTA}[1]${RESET} ${BOLD}15,000 Tokens${RESET}   - Faster, lighter responses"
+        echo -e "  ${MAGENTA}[2]${RESET} ${BOLD}30,000 Tokens${RESET}   - Extended thinking capacity"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Token Budget: "
+        read budget_choice
+        
+        case $budget_choice in
+            1) token_budget=15000; budget_name="15k" ;;
+            2) token_budget=30000; budget_name="30k" ;;
+            *) token_budget=15000; budget_name="15k" ;;
+        esac
+        
+        model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget},\"verbosity\":null}"
+        name="Claude Haiku ($budget_name)"
+        ;;
+    4) 
+        model="grok-4-1-fast-reasoning"; name="Grok 4"; color=$CYAN
+        model_settings="{}"
+        ;;
+    5) 
+        model="google-vertex:gemini-3-pro-preview"; name="Gemini 3 Pro"; color=$YELLOW
+        model_settings="{}"
+        ;;
+    6) 
+        model="openrouter:z-ai/glm-4.6:exacto:floor"; name="GLM-4.6"; color=$CYAN
+        model_settings="{}"
+        ;;
+    7) 
+        model="openrouter:moonshotai/kimi-k2-thinking:floor"; name="Kimi K2"; color=$MAGENTA
+        model_settings="{}"
+        ;;
+    8) 
+        model="openai:gpt-5.1-codex-mini"; name="GPT-5.1 Codex"; color=$GREEN
+        model_settings="{}"
+        ;;
+    9) 
+        model="anthropic:claude-opus-4-5-20251101"; name="Claude Opus 4.5"; color=$MAGENTA
+        model_settings="{}"
+        ;;
+    10) 
+        model="anthropic:claude-sonnet-4-5-20250929"; name="Claude Sonnet 4.5"; color=$MAGENTA
+        # Claude Sonnet 4.5 Token Budget Selection
+        clear
+        echo -e "${MAGENTA}"
+        cat << "BANNER"
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║          CLAUDE SONNET 4.5 TOKEN BUDGET                   ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+BANNER
+        echo -e "${RESET}"
+        echo ""
+        echo -e "${BOLD}           Select Token Budget${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${MAGENTA}[0]${RESET} ${BOLD}No Budget${RESET}       - Standard mode (0 tokens)"
+        echo -e "  ${MAGENTA}[1]${RESET} ${BOLD}15,000 Tokens${RESET}   - Faster, lighter responses"
+        echo -e "  ${MAGENTA}[2]${RESET} ${BOLD}30,000 Tokens${RESET}   - Extended thinking capacity"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Token Budget: "
+        read budget_choice
+        
+        case $budget_choice in
+            0) token_budget=0; budget_name="Standard" ;;
+            1) token_budget=15000; budget_name="15k" ;;
+            2) token_budget=30000; budget_name="30k" ;;
+            *) token_budget=0; budget_name="Standard" ;;
+        esac
+        
+        model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget}}"
+        name="Claude Sonnet 4.5 ($budget_name)"
+        ;;
+    11) 
+        model="anthropic:claude-sonnet-4-20250514"; name="Claude Sonnet 4"; color=$MAGENTA
+        # Claude Sonnet 4 Token Budget Selection
+        clear
+        echo -e "${MAGENTA}"
+        cat << "BANNER"
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║            CLAUDE SONNET 4 TOKEN BUDGET                   ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+BANNER
+        echo -e "${RESET}"
+        echo ""
+        echo -e "${BOLD}           Select Token Budget${RESET}"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -e "  ${MAGENTA}[0]${RESET} ${BOLD}No Budget${RESET}       - Standard mode (0 tokens)"
+        echo -e "  ${MAGENTA}[1]${RESET} ${BOLD}15,000 Tokens${RESET}   - Faster, lighter responses"
+        echo -e "  ${MAGENTA}[2]${RESET} ${BOLD}30,000 Tokens${RESET}   - Extended thinking capacity"
+        echo ""
+        echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
+        echo -n "Token Budget: "
+        read budget_choice
+        
+        case $budget_choice in
+            0) token_budget=0; budget_name="Standard" ;;
+            1) token_budget=15000; budget_name="15k" ;;
+            2) token_budget=30000; budget_name="30k" ;;
+            *) token_budget=0; budget_name="Standard" ;;
+        esac
+        
+        model_settings="{\"reasoning\":{\"kind\":\"budget_tokens\",\"tokens\":$token_budget}}"
+        name="Claude Sonnet 4 ($budget_name)"
+        ;;
+    *) echo "Invalid choice"; exit 1 ;;
+esac
+clear
+echo -e "${color}"
+cat << "BANNER"
+    ┌─────────────────────────────────────────────────────┐
+    │                                                     │
+    │   ░█████╗░██╗░░██╗░█████╗░████████╗                │
+    │   ██╔══██╗██║░░██║██╔══██╗╚══██╔══╝                │
+    │   ██║░░╚═╝███████║███████║░░░██║░░░                │
+    │   ██║░░██╗██╔══██║██╔══██║░░░██║░░░                │
+    │   ╚█████╔╝██║░░██║██║░░██║░░░██║░░░                │
+    │   ░╚════╝░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░                │
+    │                                                     │
+    └─────────────────────────────────────────────────────┘
+BANNER
+echo -e "${RESET}"
+echo ""
+echo -e "${BOLD}  Active Model: ${color}${name}${RESET}"
+echo ""
+if command -v jq > /dev/null 2>&1; then
+    stats=$(cat "$STATS_FILE")
+    total_msg=$(echo "$stats" | jq -r '.total_messages')
+    total_tok=$(echo "$stats" | jq -r '.total_tokens')
+    sessions=$(echo "$stats" | jq -r '.sessions')
+    
+    # Fetch credit balance
+    balance=$(curl -s -X GET "$API_BASE/billing/credit-balance" \
+        -H "cookie: access_token=$ACCESS_TOKEN" \
+        -H "origin: https://$DOMAIN" 2>/dev/null)
+    credits_cents=$(echo "$balance" | jq -r '.available_balance_cents' 2>/dev/null)
+    credits_dollars=$(awk "BEGIN {printf \"%.2f\", $credits_cents / 100}" 2>/dev/null)
+    
+    echo -e "${DIM}  Stats: $total_msg messages • $total_tok tokens • Session #$sessions${RESET}"
+    [ -n "$credits_dollars" ] && echo -e "${DIM}  Credits: ${GREEN}\$$credits_dollars${RESET}"
+else
+    echo -e "${DIM}  Stats: (jq not installed)${RESET}"
+fi
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -e "  ${CYAN}/exit${RESET}     - Exit chat"
+echo -e "  ${CYAN}/stats${RESET}    - View detailed statistics"
+echo -e "  ${CYAN}/reset${RESET}    - Reconfigure token"
+echo ""
+echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+while true; do
+    echo -ne "${BOLD}You${RESET} ▶ "
+    read -r msg
+    
+    case "$msg" in
+        /exit) 
+            save_stats
+            echo ""
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "  ${BOLD}Session Summary${RESET}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "  Messages: ${GREEN}$SESSION_MESSAGES${RESET}"
+            echo -e "  Tokens:   ${GREEN}$SESSION_TOKENS${RESET}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo ""
+            exit 0
+            ;;
+        /stats)
+            echo ""
+            echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "  ${BOLD}All-Time Statistics${RESET}"
+            echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "  Total Messages: ${GREEN}$total_msg${RESET}"
+            echo -e "  Total Tokens:   ${GREEN}$total_tok${RESET}"
+            echo -e "  Total Sessions: ${GREEN}$sessions${RESET}"
+            echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo ""
+            continue
+            ;;
+        /reset) rm -f "$CONFIG_FILE"; exec "$0" ;;
+        "") continue ;;
+    esac
+    
+    # Paste protection
+    msg_length=${#msg}
+    if [ $msg_length -gt 200 ]; then
+        echo ""
+        echo -e "${YELLOW}⚠ Large paste detected!${RESET} ${DIM}($msg_length chars)${RESET}"
+        echo ""
+        echo -e "${DIM}Preview:${RESET}"
+        echo "${msg:0:150}..."
+        echo ""
+        echo -n "Send this? (y/n): "
+        read confirm
+        
+        if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+            echo -e "${RED}✗${RESET} Cancelled"
+            echo ""
+            continue
+        fi
+    fi
+    
+    msg_esc=$(echo "$msg" | sed 's/"/\\"/g' | sed 's/\\/\\\\/g')
+    
+    echo ""
+    
+    # API request in background
+    curl -s -X POST "$API_BASE/ask" \
+        -H "content-type: application/json" \
+        -H "cookie: access_token=$ACCESS_TOKEN" \
+        -H "origin: https://$DOMAIN" \
+        -d "{\"q\":\"$msg_esc\",\"model_name\":\"$model\",\"model_settings\":$model_settings,\"context_paths\":[],\"command_paths\":[]}" \
+        > /tmp/zo_resp_$$ 2>/dev/null &
+    
+    CURL_PID=$!
+    
+    # EPIC loading animation
+    frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    dots=('   ' '.  ' '.. ' '...')
+    i=0
+    
+    while kill -0 $CURL_PID 2>/dev/null; do
+        dot_idx=$((i / 3 % 4))
+        printf "\r  ${color}${frames[$i]}${RESET} ${BOLD}Thinking${RESET}${dots[$dot_idx]}"
+        i=$(( (i + 1) % 10 ))
+        sleep 0.08
+    done
+    
+    wait $CURL_PID
+    printf "\r                                                    \r"
+    
+    resp=$(cat /tmp/zo_resp_$$)
+    rm -f /tmp/zo_resp_$$
+    
+    ai=$(echo "$resp" | grep -A 1 "^event: End$" | tail -1 | sed 's/^data: //' | jq -r '.data.output' 2>/dev/null)
+    
+    tok_line=$(echo "$resp" | grep -A 1 "^event: FrontendModelResponse$" | tail -1 | sed 's/^data: //')
+    tok_in=$(echo "$tok_line" | jq -r '.input_tokens // empty' 2>/dev/null)
+    tok_out=$(echo "$tok_line" | jq -r '.output_tokens // empty' 2>/dev/null)
+    
+    SESSION_MESSAGES=$((SESSION_MESSAGES + 1))
+    
+    echo -e "${color}${BOLD}AI${RESET}  ▶ $ai"
+    echo ""
+    
+    if [ -n "$tok_in" ] && [ "$tok_in" != "null" ] && [ "$tok_in" != "empty" ]; then
+        tok_total=$((tok_in + tok_out))
+        SESSION_TOKENS=$((SESSION_TOKENS + tok_total))
+        
+        # Create progress bar
+        bar_width=30
+        bar_filled=$((tok_out * bar_width / (tok_in + tok_out)))
+        bar=""
+        for ((j=0; j<bar_width; j++)); do
+            if [ $j -lt $bar_filled ]; then
+                bar+="█"
+            else
+                bar+="░"
+            fi
+        done
+        
+        echo -e "${DIM}      ┌─────────────────────────────────────────────────┐${RESET}"
+        echo -e "${DIM}      │${RESET} ${GREEN}$bar${RESET} ${DIM}│${RESET}"
+        echo -e "${DIM}      │  In: ${CYAN}$tok_in${RESET} ${DIM}│ Out: ${MAGENTA}$tok_out${RESET} ${DIM}│ Total: ${YELLOW}$tok_total${RESET}     ${DIM}│${RESET}"
+        echo -e "${DIM}      └─────────────────────────────────────────────────┘${RESET}"
+        echo ""
+    fi
+    
+    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+done
