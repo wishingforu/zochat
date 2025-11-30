@@ -541,20 +541,6 @@ BANNER
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
         5)
-            echo ""
-            echo -e "${DIM}Goodbye!${RESET}"
-            echo ""
-            exit 0
-            ;;
-        *)
-            echo "Invalid choice"
-            exit 1
-            ;;
-    esac
-done
-
-clear
-echo -e "${MAGENTA}"
 cat << "BANNER"
     ███████╗ ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
     ╚══███╔╝██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
@@ -580,6 +566,7 @@ echo -e "  ${CYAN}[8]${RESET} ${BOLD}GPT-5.1 Codex${RESET} - OpenAI's code speci
 echo -e "  ${CYAN}[9]${RESET} ${BOLD}Claude Opus 4.5${RESET} - Anthropic's most capable"
 echo -e "  ${CYAN}[10]${RESET} ${BOLD}Claude Sonnet 4.5${RESET} - Balanced performance"
 echo -e "  ${CYAN}[11]${RESET} ${BOLD}Claude Sonnet 4${RESET} - Reliable assistant"
+echo -e "  ${CYAN}[12]${RESET} ${BOLD}Back${RESET}            - Return to main menu"
 echo ""
 echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
