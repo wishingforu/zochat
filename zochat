@@ -129,12 +129,11 @@ BANNER
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -e "  ${CYAN}[1]${RESET} ${BOLD}Chat with AI${RESET}      - Start a conversation"
-    echo -e "  ${CYAN}[2]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
-    echo -e "  ${CYAN}[3]${RESET} ${BOLD}View Billing${RESET}      - Credits and usage"
-    echo -e "  ${CYAN}[4]${RESET} ${BOLD}User Services${RESET}     - Manage services"
-    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Update Tool${RESET}       - Get latest version"
-    echo -e "  ${CYAN}[6]${RESET} ${BOLD}Exit${RESET}              - Close application"
+    echo -e "  ${CYAN}[1]${RESET} ${BOLD}Chat with AI${RESET}      - Start a conversation"
+    echo -e "  ${CYAN}[2]${RESET} ${BOLD}Events${RESET}            - View and schedule tasks"
+    echo -e "  ${CYAN}[3]${RESET} ${BOLD}User Services${RESET}     - Manage services"
+    echo -e "  ${CYAN}[4]${RESET} ${BOLD}View Billing${RESET}      - Credits and usage"
+    echo -e "  ${CYAN}[5]${RESET} ${BOLD}Exit${RESET}              - Close application"
     echo ""
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
@@ -179,7 +178,7 @@ BANNER
                 case $event_choice in
                     1)
                         # View events
-                        echo ""
+                        (
                         echo -e "${YELLOW}Fetching scheduled events...${RESET}"
                         echo ""
                         
@@ -217,7 +216,9 @@ BANNER
                             echo -e "${RED}Error: jq not installed. Cannot parse events.${RESET}"
                         fi
                         echo ""
-                        read -n 1 -s -r -p "Press any key to continue..."
+                        echo ""
+                        echo -e "${DIM}Press ENTER to return to menu, use arrow keys to scroll${RESET}"
+                        ) | less -R
                         ;;
                     2)
                         # Schedule new event
@@ -269,7 +270,7 @@ BANNER
             done
             ;;
         3)
-            # View billing information
+            # User Services Management
             echo ""
             echo -e "${YELLOW}Fetching billing information...${RESET}"
             echo ""
@@ -389,7 +390,7 @@ BANNER
             read -n 1 -s -r -p "Press any key to continue..."
             ;;
         4)
-            # User Services Management
+            # View billing information
             while true; do
                 clear
                 echo -e "${MAGENTA}"
@@ -539,9 +540,6 @@ BANNER
             done
             ;;
         5)
-            update_script
-            ;;
-        6)
             echo ""
             echo -e "${DIM}Goodbye!${RESET}"
             echo ""
