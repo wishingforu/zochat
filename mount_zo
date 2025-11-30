@@ -269,8 +269,6 @@ ERROR
             echo -e "  2. Run zochat on your ${BOLD}local machine${RESET}"
             echo -e "  3. Select [8] Mount"
             echo ""
-            echo -e "${DIM}Detected: $(hostname) | $(pwd)${RESET}"
-            echo ""
             exit 1
         fi
         
